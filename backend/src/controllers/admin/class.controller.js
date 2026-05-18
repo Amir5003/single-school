@@ -7,7 +7,7 @@ const teacherService = require('../../services/teacher.service');
  */
 const createClass = async (req, res, next) => {
   try {
-    const cls = await classService.createClass(req.body);
+    const cls = await classService.createClass(req.body, req.school._id);
     res
       .status(201)
       .json(new ApiResponse(201, { class: cls }, 'Class created successfully'));
@@ -21,7 +21,7 @@ const createClass = async (req, res, next) => {
  */
 const listClasses = async (req, res, next) => {
   try {
-    const classes = await classService.listClasses();
+    const classes = await classService.listClasses(req.school._id);
     res.json(new ApiResponse(200, { classes }, 'Classes retrieved successfully'));
   } catch (err) {
     next(err);
@@ -33,7 +33,7 @@ const listClasses = async (req, res, next) => {
  */
 const getClass = async (req, res, next) => {
   try {
-    const { cls, students, assignments } = await classService.getClass(req.params.id);
+    const { cls, students, assignments } = await classService.getClass(req.params.id, req.school._id);
     res.json(new ApiResponse(200, { class: cls, students, assignments }, 'Class retrieved successfully'));
   } catch (err) {
     next(err);
@@ -45,7 +45,7 @@ const getClass = async (req, res, next) => {
  */
 const updateClass = async (req, res, next) => {
   try {
-    const cls = await classService.updateClass(req.params.id, req.body);
+    const cls = await classService.updateClass(req.params.id, req.body, req.school._id);
     res.json(new ApiResponse(200, { class: cls }, 'Class updated successfully'));
   } catch (err) {
     next(err);
@@ -57,7 +57,7 @@ const updateClass = async (req, res, next) => {
  */
 const deleteClass = async (req, res, next) => {
   try {
-    await classService.deleteClass(req.params.id);
+    await classService.deleteClass(req.params.id, req.school._id);
     res.json(new ApiResponse(200, null, 'Class deleted successfully'));
   } catch (err) {
     next(err);
@@ -70,7 +70,7 @@ const deleteClass = async (req, res, next) => {
  */
 const assignStudents = async (req, res, next) => {
   try {
-    const result = await classService.assignStudents(req.params.id, req.body.studentIds);
+    const result = await classService.assignStudents(req.params.id, req.body.studentIds, req.school._id);
     res.json(new ApiResponse(200, result, 'Students assigned to class successfully'));
   } catch (err) {
     next(err);
@@ -86,7 +86,8 @@ const assignTeacher = async (req, res, next) => {
     const assignment = await teacherService.assignToClass(
       req.body.teacherId,
       req.params.id,
-      req.body.subject
+      req.body.subject,
+      req.school._id
     );
     res
       .status(201)

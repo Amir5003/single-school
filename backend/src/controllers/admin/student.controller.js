@@ -7,7 +7,7 @@ const studentService = require('../../services/student.service');
  */
 const createStudent = async (req, res, next) => {
   try {
-    const { user, student } = await studentService.createStudent(req.body);
+    const { user, student } = await studentService.createStudent(req.body, req.school._id);
     res
       .status(201)
       .json(new ApiResponse(201, { user, student }, 'Student created successfully'));
@@ -24,7 +24,7 @@ const createStudent = async (req, res, next) => {
 const listStudents = async (req, res, next) => {
   try {
     const { page, limit, search } = req.query;
-    const result = await studentService.listStudents({ page, limit, search });
+    const result = await studentService.listStudents({ page, limit, search }, req.school._id);
     res.json(new ApiResponse(200, result, 'Students retrieved successfully'));
   } catch (err) {
     next(err);
@@ -37,7 +37,7 @@ const listStudents = async (req, res, next) => {
  */
 const getStudent = async (req, res, next) => {
   try {
-    const student = await studentService.getStudent(req.params.id);
+    const student = await studentService.getStudent(req.params.id, req.school._id);
     res.json(new ApiResponse(200, { student }, 'Student retrieved successfully'));
   } catch (err) {
     next(err);
@@ -50,7 +50,7 @@ const getStudent = async (req, res, next) => {
  */
 const updateStudent = async (req, res, next) => {
   try {
-    const student = await studentService.updateStudent(req.params.id, req.body);
+    const student = await studentService.updateStudent(req.params.id, req.body, req.school._id);
     res.json(new ApiResponse(200, { student }, 'Student updated successfully'));
   } catch (err) {
     next(err);
@@ -63,7 +63,7 @@ const updateStudent = async (req, res, next) => {
  */
 const deleteStudent = async (req, res, next) => {
   try {
-    await studentService.softDeleteStudent(req.params.id);
+    await studentService.softDeleteStudent(req.params.id, req.school._id);
     res.json(new ApiResponse(200, null, 'Student deleted successfully'));
   } catch (err) {
     next(err);

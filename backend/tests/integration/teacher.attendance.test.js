@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -8,8 +8,9 @@ const ADMIN = {
   name: 'Admin User',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
 };
+
+let testSchool;
 
 const TEACHER_DATA = {
   name: 'Mr Ali',
@@ -29,6 +30,7 @@ const CLASS_DATA = {
   name: 'Class 5A',
   grade: '5',
   section: 'A',
+  academicYear: '2024-2025',
 };
 
 const STUDENT_BASE = (n) => ({
@@ -70,7 +72,8 @@ const loginUser = async (email, password) => {
 };
 
 const getAdminCookie = async () => {
-  await createDirectUser(ADMIN);
+  testSchool = await createSchool();
+  await createSchoolAdmin(testSchool._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };

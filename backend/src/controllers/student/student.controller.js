@@ -15,7 +15,7 @@ const {
  */
 const getProfile = async (req, res, next) => {
   try {
-    const student = await getStudentProfile(req.user._id);
+    const student = await getStudentProfile(req.user._id, req.school._id);
     res.json(new ApiResponse(200, { student }, 'Profile retrieved successfully'));
   } catch (err) {
     next(err);
@@ -30,7 +30,7 @@ const getProfile = async (req, res, next) => {
  */
 const getTimetable = async (req, res, next) => {
   try {
-    const periods = await getStudentTimetable(req.user._id);
+    const periods = await getStudentTimetable(req.user._id, req.school._id);
     res.json(new ApiResponse(200, { periods }, 'Timetable retrieved successfully'));
   } catch (err) {
     next(err);
@@ -46,7 +46,7 @@ const getTimetable = async (req, res, next) => {
 const getAttendance = async (req, res, next) => {
   try {
     const { month } = req.query;
-    const data = await getStudentAttendance(req.user._id, month);
+    const data = await getStudentAttendance(req.user._id, month, req.school._id);
     res.json(new ApiResponse(200, data, 'Attendance retrieved successfully'));
   } catch (err) {
     next(err);
@@ -60,7 +60,7 @@ const getAttendance = async (req, res, next) => {
  */
 const getMarks = async (req, res, next) => {
   try {
-    const data = await getStudentMarks(req.user._id);
+    const data = await getStudentMarks(req.user._id, req.school._id);
     res.json(new ApiResponse(200, data, 'Marks retrieved successfully'));
   } catch (err) {
     next(err);
@@ -74,7 +74,7 @@ const getMarks = async (req, res, next) => {
  */
 const getAnnouncements = async (req, res, next) => {
   try {
-    const announcements = await getStudentAnnouncements();
+    const announcements = await getStudentAnnouncements(req.school._id);
     res.json(new ApiResponse(200, { announcements }, 'Announcements retrieved successfully'));
   } catch (err) {
     next(err);

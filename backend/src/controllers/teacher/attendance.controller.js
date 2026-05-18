@@ -9,8 +9,8 @@ const attendanceService = require('../../services/attendance.service');
  */
 const getAssignedClasses = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
-    const classes = await teacherService.getTeacherClasses(teacher._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
+    const classes = await teacherService.getTeacherClasses(teacher._id, req.school._id);
     res.json(new ApiResponse(200, { classes }, 'Classes retrieved successfully'));
   } catch (err) {
     next(err);
@@ -24,7 +24,7 @@ const getAssignedClasses = async (req, res, next) => {
  */
 const getClassStudents = async (req, res, next) => {
   try {
-    const students = await teacherService.getClassStudents(req.params.classId);
+    const students = await teacherService.getClassStudents(req.params.classId, req.school._id);
     res.json(new ApiResponse(200, { students }, 'Students retrieved successfully'));
   } catch (err) {
     next(err);
@@ -40,13 +40,14 @@ const getClassStudents = async (req, res, next) => {
  */
 const markAttendance = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
     const { classId, date, records } = req.body;
     const result = await attendanceService.markBulkAttendance(
       classId,
       date,
       records,
-      teacher._id
+      teacher._id,
+      req.school._id
     );
     res.json(new ApiResponse(200, result, 'Attendance saved successfully'));
   } catch (err) {
@@ -63,12 +64,13 @@ const markAttendance = async (req, res, next) => {
  */
 const getAttendance = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
     const { classId, date } = req.query;
     const records = await attendanceService.getAttendanceByClassDate(
       classId,
       date,
-      teacher._id
+      teacher._id,
+      req.school._id
     );
     res.json(new ApiResponse(200, { records }, 'Attendance retrieved successfully'));
   } catch (err) {

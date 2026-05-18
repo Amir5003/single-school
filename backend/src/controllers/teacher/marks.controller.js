@@ -11,8 +11,8 @@ const marksService = require('../../services/marks.service');
  */
 const saveMark = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
-    const mark = await marksService.upsertMark(req.body, teacher._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
+    const mark = await marksService.upsertMark(req.body, teacher._id, req.school._id);
     res.json(new ApiResponse(200, { mark }, 'Mark saved successfully'));
   } catch (err) {
     next(err);
@@ -28,9 +28,9 @@ const saveMark = async (req, res, next) => {
  */
 const getMarks = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
     const { classId, subject } = req.query;
-    const marks = await marksService.getMarksByClass(classId, subject, teacher._id);
+    const marks = await marksService.getMarksByClass(classId, subject, teacher._id, req.school._id);
     res.json(new ApiResponse(200, { marks }, 'Marks retrieved successfully'));
   } catch (err) {
     next(err);

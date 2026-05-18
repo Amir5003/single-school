@@ -6,7 +6,7 @@ const teacherService = require('../../services/teacher.service');
  */
 const createTeacher = async (req, res, next) => {
   try {
-    const { user, teacher } = await teacherService.createTeacher(req.body);
+    const { user, teacher } = await teacherService.createTeacher(req.body, req.school._id);
     res
       .status(201)
       .json(new ApiResponse(201, { user, teacher }, 'Teacher created successfully'));
@@ -20,7 +20,7 @@ const createTeacher = async (req, res, next) => {
  */
 const listTeachers = async (req, res, next) => {
   try {
-    const teachers = await teacherService.listTeachers();
+    const teachers = await teacherService.listTeachers(req.school._id);
     res.json(new ApiResponse(200, { teachers }, 'Teachers retrieved successfully'));
   } catch (err) {
     next(err);
@@ -32,7 +32,7 @@ const listTeachers = async (req, res, next) => {
  */
 const getTeacher = async (req, res, next) => {
   try {
-    const { teacher, assignments } = await teacherService.getTeacher(req.params.id);
+    const { teacher, assignments } = await teacherService.getTeacher(req.params.id, req.school._id);
     res.json(new ApiResponse(200, { teacher, assignments }, 'Teacher retrieved successfully'));
   } catch (err) {
     next(err);
@@ -44,7 +44,7 @@ const getTeacher = async (req, res, next) => {
  */
 const updateTeacher = async (req, res, next) => {
   try {
-    const teacher = await teacherService.updateTeacher(req.params.id, req.body);
+    const teacher = await teacherService.updateTeacher(req.params.id, req.body, req.school._id);
     res.json(new ApiResponse(200, { teacher }, 'Teacher updated successfully'));
   } catch (err) {
     next(err);
@@ -56,7 +56,7 @@ const updateTeacher = async (req, res, next) => {
  */
 const deleteTeacher = async (req, res, next) => {
   try {
-    await teacherService.deleteTeacher(req.params.id);
+    await teacherService.deleteTeacher(req.params.id, req.school._id);
     res.json(new ApiResponse(200, null, 'Teacher deleted successfully'));
   } catch (err) {
     next(err);
@@ -72,7 +72,8 @@ const assignToClass = async (req, res, next) => {
     const assignment = await teacherService.assignToClass(
       req.params.id,
       req.body.classId,
-      req.body.subject
+      req.body.subject,
+      req.school._id
     );
     res
       .status(201)

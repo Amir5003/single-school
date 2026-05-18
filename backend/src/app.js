@@ -8,6 +8,9 @@ const adminRoutes = require('./routes/admin.routes');
 const teacherRoutes = require('./routes/teacher.routes');
 const studentRoutes = require('./routes/student.routes');
 const publicRoutes = require('./routes/public.routes');
+const onboardingRoutes = require('./routes/onboarding.routes');
+const platformRoutes = require('./routes/platform.routes');
+const parentRoutes = require('./routes/parent.routes');
 
 const app = express();
 
@@ -44,11 +47,22 @@ app.get('/api/v1/health', (_req, res) => {
 });
 
 // ── Routes ───────────────────────────────────────────────────────────────────
+
+// ── Public / unauthenticated routes (no schoolScope) ─────────────────────────
+app.use('/api/v1/onboarding', onboardingRoutes);   // School registration + slug check
+app.use('/api/v1/public', publicRoutes);
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
+
+// ── Platform (super-admin only — NO schoolScope) ──────────────────────────────
+app.use('/api/v1/platform', platformRoutes);
+
+// ── Tenant-scoped routes (authenticate → schoolScope applied inside each router)
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/teacher', teacherRoutes);
 app.use('/api/v1/student', studentRoutes);
-app.use('/api/v1/public', publicRoutes);
+app.use('/api/v1/parent', parentRoutes);
 
 // ── Global error handler (must be last) ──────────────────────────────────────
 app.use(errorHandler);

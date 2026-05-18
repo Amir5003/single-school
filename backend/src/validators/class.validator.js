@@ -14,6 +14,11 @@ const createClassValidator = [
     .withMessage('Section is required')
     .isLength({ max: 5 })
     .withMessage('Section cannot exceed 5 characters'),
+
+  body('academicYear')
+    .trim()
+    .notEmpty()
+    .withMessage('Academic year is required'),
 ];
 
 /**

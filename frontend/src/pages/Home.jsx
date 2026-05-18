@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import useApi from '../hooks/useApi';
-import formatDate from '../utils/formatDate';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectUser, selectRole, selectIsAuthenticated, selectSchoolSlug, clearCredentials } from '../redux/slices/authSlice';
+import { logoutUser } from '../api/auth.api';
 
 // ── Motion helpers ────────────────────────────────────────────────────────────
 const reduced =
@@ -20,36 +19,41 @@ const heroFade = (i = 0) =>
         transition: { delay: i * 0.13, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
       };
 
-// Scroll-triggered fade-up for sections below the fold
-const scrollFade = reduced
-  ? {}
-  : {
-      initial: { opacity: 0, y: 28 },
-      whileInView: { opacity: 1, y: 0 },
-      viewport: { once: true, margin: '-60px' },
-      transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-    };
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const ROLE_LABELS = {
+  'super-admin': 'Super Admin',
+  'school-admin': 'School Admin',
+  teacher: 'Teacher',
+  student: 'Student',
+  parent: 'Parent',
+};
 
-const cardHover = reduced ? {} : { y: -5, boxShadow: '0 16px 40px rgba(79,70,229,0.13)' };
-
-// ── Public API ────────────────────────────────────────────────────────────────
-const fetchAnnouncements = () =>
-  axios
-    .get(`${import.meta.env.VITE_API_URL}/public/announcements`)
-    .then((r) => r.data);
-
-// Is the announcement posted within the last 7 days?
-const isNew = (date) => Date.now() - new Date(date) < 7 * 24 * 60 * 60 * 1000;
+function getDashboardPath(role, schoolSlug) {
+  if (role === 'super-admin') return '/platform/schools';
+  if (!schoolSlug) return '/';
+  if (role === 'school-admin') return `/schools/${schoolSlug}/admin/dashboard`;
+  if (role === 'teacher') return `/schools/${schoolSlug}/teacher/dashboard`;
+  if (role === 'student') return `/schools/${schoolSlug}/student/dashboard`;
+  if (role === 'parent') return `/schools/${schoolSlug}/parent/dashboard`;
+  return '/';
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Home() {
-  const { data, loading, execute } = useApi(fetchAnnouncements);
+  const user = useSelector(selectUser);
+  const role = useSelector(selectRole);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const schoolSlug = useSelector(selectSchoolSlug);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    execute();
-  }, [execute]);
+  const dashboardPath = getDashboardPath(role, schoolSlug);
 
-  const announcements = data?.data?.announcements ?? [];
+  const handleLogout = async () => {
+    try { await logoutUser(); } catch { /* cookie cleared regardless */ }
+    dispatch(clearCredentials());
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-x-hidden">
@@ -66,18 +70,43 @@ export default function Home() {
             </span>
           </div>
           <nav className="flex items-center gap-3">
-            <Link
-              to="/register"
-              className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
-            >
-              Register
-            </Link>
-            <Link
-              to="/login"
-              className="px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              Log in
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-gray-600 hidden sm:block">
+                  {user?.name}
+                  <span className="ml-1.5 px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                    {ROLE_LABELS[role] ?? role}
+                  </span>
+                </span>
+                <Link
+                  to={dashboardPath}
+                  className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                >
+                  Register
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+                >
+                  Log in
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -144,19 +173,23 @@ export default function Home() {
               {...heroFade(3)}
               className="mt-10 flex flex-wrap gap-4 justify-center"
             >
-              <Link
-                to="/login"
-                className="group px-7 py-3.5 bg-indigo-600 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-0.5 transition-all duration-200"
-              >
-                Log in to your account
-                <span className="inline-block ml-1.5 group-hover:translate-x-0.5 transition-transform">→</span>
-              </Link>
-              <a
-                href="#announcements"
-                className="px-7 py-3.5 bg-white text-gray-700 font-semibold rounded-2xl shadow border border-gray-200 hover:bg-gray-50 hover:-translate-y-0.5 transition-all duration-200"
-              >
-                View announcements ↓
-              </a>
+              {isAuthenticated ? (
+                <Link
+                  to={dashboardPath}
+                  className="group px-7 py-3.5 bg-indigo-600 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Go to your Dashboard
+                  <span className="inline-block ml-1.5 group-hover:translate-x-0.5 transition-transform">→</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="group px-7 py-3.5 bg-indigo-600 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Log in to your account
+                  <span className="inline-block ml-1.5 group-hover:translate-x-0.5 transition-transform">→</span>
+                </Link>
+              )}
             </motion.div>
 
             {/* Feature pills */}
@@ -182,128 +215,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Divider wave ─────────────────────────────────────────────────── */}
-        <div className="bg-white">
-          <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full text-gray-50" preserveAspectRatio="none">
-            <path d="M0 40 C360 0 1080 0 1440 40 L1440 40 L0 40Z" fill="currentColor" />
-          </svg>
-        </div>
-
-        {/* ── Announcements ─────────────────────────────────────────────────── */}
-        <section id="announcements" className="bg-gray-50 py-20">
-          <div className="max-w-6xl mx-auto px-6">
-
-            {/* Section heading */}
-            <motion.div {...scrollFade} className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">
-                  From the school
-                </p>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                  Latest Announcements
-                </h2>
-              </div>
-              {announcements.length > 0 && (
-                <span className="text-sm text-gray-400 shrink-0">
-                  {announcements.length} update{announcements.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </motion.div>
-
-            {/* Loading — 3 skeleton cards */}
-            {loading && (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  >
-                    <div className="flex gap-2 mb-4">
-                      <div className="h-2.5 bg-gray-100 rounded-full w-16" />
-                      <div className="flex-1" />
-                      <div className="h-2.5 bg-gray-100 rounded-full w-20" />
-                    </div>
-                    <div className="h-3.5 bg-gray-200 rounded-full w-4/5 mb-3" />
-                    <div className="h-2.5 bg-gray-100 rounded-full w-full mb-2" />
-                    <div className="h-2.5 bg-gray-100 rounded-full w-11/12 mb-2" />
-                    <div className="h-2.5 bg-gray-100 rounded-full w-3/5" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!loading && announcements.length === 0 && (
-              <motion.div {...scrollFade} className="text-center py-20">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-50 mb-4">
-                  <span className="text-3xl">📢</span>
-                </div>
-                <p className="text-gray-700 font-semibold">No announcements yet</p>
-                <p className="text-gray-400 text-sm mt-1">
-                  Check back soon — your school will post updates here.
-                </p>
-              </motion.div>
-            )}
-
-            {/* Announcement cards — scroll-triggered stagger */}
-            {!loading && announcements.length > 0 && (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {announcements.map((ann, i) => (
-                  <motion.article
-                    key={ann._id}
-                    initial={reduced ? {} : { opacity: 0, y: 36 }}
-                    whileInView={reduced ? {} : { opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-40px' }}
-                    transition={{
-                      delay: i * 0.09,
-                      duration: 0.5,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    whileHover={cardHover}
-                    className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col cursor-default"
-                  >
-                    {/* Top row: NEW badge + date */}
-                    <div className="flex items-center gap-2 mb-3">
-                      {isNew(ann.publishedAt) && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                          New
-                        </span>
-                      )}
-                      <span className="flex-1" />
-                      <span className="text-xs text-gray-400 whitespace-nowrap">
-                        {formatDate(ann.publishedAt)}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="text-sm font-semibold text-gray-900 leading-snug group-hover:text-indigo-700 transition-colors mb-2">
-                      {ann.title}
-                    </h3>
-
-                    {/* Content preview */}
-                    <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 flex-1">
-                      {ann.content}
-                    </p>
-
-                    {/* Author */}
-                    {ann.teacherId?.userId?.name && (
-                      <div className="mt-4 pt-3 border-t border-gray-50 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700">
-                          {ann.teacherId.userId.name[0].toUpperCase()}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {ann.teacherId.userId.name}
-                        </span>
-                      </div>
-                    )}
-                  </motion.article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
@@ -321,12 +232,28 @@ export default function Home() {
             © {new Date().getFullYear()} All rights reserved.
           </p>
           <nav className="flex gap-5 text-xs text-gray-400">
-            <Link to="/login" className="hover:text-gray-700 transition-colors">
-              Log in
-            </Link>
-            <Link to="/register" className="hover:text-gray-700 transition-colors">
-              Register
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to={dashboardPath} className="hover:text-gray-700 transition-colors">
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="hover:text-red-600 transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hover:text-gray-700 transition-colors">
+                  Log in
+                </Link>
+                <Link to="/register" className="hover:text-gray-700 transition-colors">
+                  Register
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </footer>

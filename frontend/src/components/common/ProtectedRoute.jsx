@@ -1,12 +1,6 @@
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
-import { selectIsAuthenticated, selectRole } from '../../redux/slices/authSlice';
-
-const ROLE_DASHBOARD = {
-  admin: '/admin/dashboard',
-  teacher: '/teacher/dashboard',
-  student: '/student/dashboard',
-};
+import { selectIsAuthenticated, selectRole, selectSchoolSlug } from '../../redux/slices/authSlice';
 
 /**
  * Wraps a route that requires authentication and optionally a specific role.
@@ -18,14 +12,24 @@ const ROLE_DASHBOARD = {
 export default function ProtectedRoute({ children, allowedRole }) {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const role = useSelector(selectRole);
+  const schoolSlug = useSelector(selectSchoolSlug);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (allowedRole && role !== allowedRole) {
-    // Redirect to the user's own dashboard instead of showing a 403 page
-    return <Navigate to={ROLE_DASHBOARD[role] || '/login'} replace />;
+    // Build a slug-aware fallback dashboard path
+    let fallback = '/login';
+    if (role === 'super-admin') fallback = '/platform/schools';
+    else if (schoolSlug) {
+      const base = `/schools/${schoolSlug}`;
+      if (role === 'school-admin') fallback = `${base}/admin/dashboard`;
+      else if (role === 'teacher')  fallback = `${base}/teacher/dashboard`;
+      else if (role === 'student')  fallback = `${base}/student/dashboard`;
+      else if (role === 'parent')   fallback = `${base}/parent/dashboard`;
+    }
+    return <Navigate to={fallback} replace />;
   }
 
   return children;

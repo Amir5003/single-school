@@ -236,7 +236,7 @@ export default function TeachersPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <Layout role="admin">
+    <Layout role="school-admin">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-800">Teachers</h2>

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',
@@ -32,11 +37,11 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
-// Prevents double-marking a student on the same date (FR-026)
-attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
+// Prevents double-marking a student on the same date within a school
+attendanceSchema.index({ schoolId: 1, studentId: 1, date: 1 }, { unique: true });
 
-// Fast lookups by class + date (bulk attendance fetch)
-attendanceSchema.index({ classId: 1, date: 1 });
+// Fast lookups by class + date within a school (bulk attendance fetch)
+attendanceSchema.index({ schoolId: 1, classId: 1, date: 1 });
 
 // Fast lookups by student (student attendance history)
 attendanceSchema.index({ studentId: 1 });

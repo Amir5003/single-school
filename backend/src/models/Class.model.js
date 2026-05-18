@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const classSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     name: {
       type: String,
       required: [true, 'Class name is required'],
@@ -19,14 +24,20 @@ const classSchema = new mongoose.Schema(
       uppercase: true,
       maxlength: [5, 'Section cannot exceed 5 characters'],
     },
+    academicYear: {
+      type: String,
+      required: [true, 'Academic year is required'],
+      trim: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Compound unique index — one section per grade (e.g. Grade 5 Section A is unique)
-classSchema.index({ grade: 1, section: 1 }, { unique: true });
+// Compound unique: class name must be unique within a school for an academic year
+classSchema.index({ schoolId: 1, name: 1, academicYear: 1 }, { unique: true });
+classSchema.index({ schoolId: 1, academicYear: 1 });
 
 const Class = mongoose.model('Class', classSchema);
 

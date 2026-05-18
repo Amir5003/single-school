@@ -1,12 +1,26 @@
 const authService = require('../services/auth.service');
 const ApiResponse = require('../utils/ApiResponse');
 
-const COOKIE_OPTIONS = {
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-  secure: process.env.NODE_ENV === 'production',
-  // maxAge in ms: parse e.g. "7d" → 7 days
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  sameSite: IS_PROD ? 'none' : 'strict',
+  secure: IS_PROD,
+  maxAge: 15 * 60 * 1000, // 15 minutes
+};
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: IS_PROD ? 'none' : 'strict',
+  secure: IS_PROD,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: IS_PROD ? 'none' : 'strict',
+  secure: IS_PROD,
 };
 
 const register = async (req, res, next) => {
@@ -23,26 +37,46 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const { user, token } = await authService.login(email, password);
+    const { user, accessToken, refreshToken } = await authService.login(email, password);
 
     return res
       .status(200)
-      .cookie('token', token, COOKIE_OPTIONS)
+      .cookie('token', accessToken, ACCESS_COOKIE_OPTIONS)
+      .cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
       .json(new ApiResponse(200, { user }, 'Login successful'));
   } catch (err) {
     return next(err);
   }
 };
 
-const logout = (_req, res) => {
-  return res
-    .status(200)
-    .clearCookie('token', {
-      httpOnly: true,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      secure: process.env.NODE_ENV === 'production',
-    })
-    .json(new ApiResponse(200, null, 'Logged out successfully'));
+const refresh = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    const { accessToken } = await authService.refreshAccessToken(refreshToken);
+
+    return res
+      .status(200)
+      .cookie('token', accessToken, ACCESS_COOKIE_OPTIONS)
+      .json(new ApiResponse(200, null, 'Token refreshed'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    // Clear refresh token hash if user is authenticated
+    if (req.user?._id) {
+      await authService.logout(req.user._id);
+    }
+    return res
+      .status(200)
+      .clearCookie('token', CLEAR_COOKIE_OPTIONS)
+      .clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS)
+      .json(new ApiResponse(200, null, 'Logged out successfully'));
+  } catch (err) {
+    return next(err);
+  }
 };
 
 const getMe = async (req, res, next) => {
@@ -56,4 +90,4 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe };
+module.exports = { register, login, refresh, logout, getMe };

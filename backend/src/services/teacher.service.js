@@ -12,15 +12,16 @@ const MONGO_DUPLICATE_KEY = 11000;
  * Create a teacher User + Teacher profile in a single transaction.
  *
  * @param {{ name, email, password, phone, employeeId }} data
+ * @param {string} schoolId  Injected from req.school._id
  * @returns {Promise<{ user, teacher }>}
  */
-const createTeacher = async (data) => {
+const createTeacher = async (data, schoolId) => {
   const { name, email, password, phone, employeeId } = data;
   const normalizedId = (employeeId || '').toUpperCase();
 
   // Pre-flight duplicate checks
   const [dupEmployee, dupEmail] = await Promise.all([
-    Teacher.findOne({ employeeId: normalizedId }),
+    Teacher.findOne({ schoolId, employeeId: normalizedId }),
     User.findOne({ email }),
   ]);
 
@@ -36,11 +37,11 @@ const createTeacher = async (data) => {
 
   try {
     const [user] = await User.create(
-      [{ name, email, password, role: 'teacher', phone: phone || null }],
+      [{ name, email, password, role: 'teacher', phone: phone || null, schoolId }],
       { session }
     );
     const [teacher] = await Teacher.create(
-      [{ userId: user._id, employeeId: normalizedId }],
+      [{ schoolId, userId: user._id, employeeId: normalizedId }],
       { session }
     );
 
@@ -61,14 +62,16 @@ const createTeacher = async (data) => {
 };
 
 /**
- * List all teachers with populated userId and class assignment count.
+ * List all teachers with populated userId and class assignment count, scoped to a school.
  *
+ * @param {string} schoolId
  * @returns {Promise<Array>}
  */
-const listTeachers = async () => {
+const listTeachers = async (schoolId) => {
   const [teachers, classCounts] = await Promise.all([
-    Teacher.find().populate('userId', 'name email phone role isActive').sort({ createdAt: -1 }),
+    Teacher.find({ schoolId }).populate('userId', 'name email phone role isActive').sort({ createdAt: -1 }),
     ClassTeacher.aggregate([
+      { $match: { schoolId: new mongoose.Types.ObjectId(schoolId) } },
       { $group: { _id: '$teacherId', count: { $sum: 1 } } },
     ]),
   ]);
@@ -85,12 +88,13 @@ const listTeachers = async () => {
 };
 
 /**
- * Get a single teacher by their Teacher _id, with class assignments.
+ * Get a single teacher by their Teacher _id, scoped to a school.
  *
  * @param {string} id  Teacher document _id
+ * @param {string} schoolId
  */
-const getTeacher = async (id) => {
-  const teacher = await Teacher.findById(id).populate(
+const getTeacher = async (id, schoolId) => {
+  const teacher = await Teacher.findOne({ _id: id, schoolId }).populate(
     'userId',
     'name email phone role isActive'
   );
@@ -98,7 +102,7 @@ const getTeacher = async (id) => {
     throw new ApiError(404, 'Teacher not found');
   }
 
-  const assignments = await ClassTeacher.find({ teacherId: id }).populate(
+  const assignments = await ClassTeacher.find({ schoolId, teacherId: id }).populate(
     'classId',
     'name grade section'
   );
@@ -108,14 +112,13 @@ const getTeacher = async (id) => {
 
 /**
  * Partially update a teacher's profile.
- * User fields:    name, phone
- * Teacher fields: employeeId
  *
  * @param {string} id   Teacher document _id
  * @param {object} data Partial fields to update
+ * @param {string} schoolId
  */
-const updateTeacher = async (id, data) => {
-  const teacher = await Teacher.findById(id);
+const updateTeacher = async (id, data, schoolId) => {
+  const teacher = await Teacher.findOne({ _id: id, schoolId });
   if (!teacher) {
     throw new ApiError(404, 'Teacher not found');
   }
@@ -146,18 +149,18 @@ const updateTeacher = async (id, data) => {
 };
 
 /**
- * Delete a teacher.
- * Blocked if the teacher has active class assignments (ClassTeacher records).
+ * Delete a teacher, scoped to a school.
  *
  * @param {string} id  Teacher document _id
+ * @param {string} schoolId
  */
-const deleteTeacher = async (id) => {
-  const teacher = await Teacher.findById(id);
+const deleteTeacher = async (id, schoolId) => {
+  const teacher = await Teacher.findOne({ _id: id, schoolId });
   if (!teacher) {
     throw new ApiError(404, 'Teacher not found');
   }
 
-  const hasAssignments = await ClassTeacher.exists({ teacherId: id });
+  const hasAssignments = await ClassTeacher.exists({ schoolId, teacherId: id });
   if (hasAssignments) {
     throw new ApiError(
       400,
@@ -172,19 +175,19 @@ const deleteTeacher = async (id) => {
 };
 
 /**
- * Assign a teacher to a class for a specific subject.
- * Throws ApiError(409) if the exact combination already exists.
+ * Assign a teacher to a class for a specific subject, scoped to a school.
  *
  * @param {string} teacherId
  * @param {string} classId
  * @param {string} subject
+ * @param {string} schoolId
  * @returns {Promise<ClassTeacher>}
  */
-const assignToClass = async (teacherId, classId, subject) => {
+const assignToClass = async (teacherId, classId, subject, schoolId) => {
   const [teacher, cls, existing] = await Promise.all([
-    Teacher.findById(teacherId),
-    mongoose.model('Class').findById(classId),
-    ClassTeacher.findOne({ classId, teacherId, subject }),
+    Teacher.findOne({ _id: teacherId, schoolId }),
+    mongoose.model('Class').findOne({ _id: classId, schoolId }),
+    ClassTeacher.findOne({ schoolId, classId, teacherId, subject }),
   ]);
 
   if (!teacher) throw new ApiError(404, 'Teacher not found');
@@ -196,20 +199,20 @@ const assignToClass = async (teacherId, classId, subject) => {
     );
   }
 
-  return ClassTeacher.create({ classId, teacherId, subject });
+  return ClassTeacher.create({ schoolId, classId, teacherId, subject });
 };
 
 // ── Teacher-facing helpers ────────────────────────────────────────────────────
 
 /**
  * Resolve a Teacher document from the authenticated User _id.
- * Used in teacher-scoped routes where req.user._id is a User._id.
  *
  * @param {string} userId  User._id from req.user
+ * @param {string} schoolId
  * @returns {Promise<Teacher>}
  */
-const getTeacherByUserId = async (userId) => {
-  const teacher = await Teacher.findOne({ userId }).populate(
+const getTeacherByUserId = async (userId, schoolId) => {
+  const teacher = await Teacher.findOne({ userId, schoolId }).populate(
     'userId',
     'name email phone'
   );
@@ -223,10 +226,11 @@ const getTeacherByUserId = async (userId) => {
  * List classes assigned to a teacher, with student count per class.
  *
  * @param {string} teacherId  Teacher._id
+ * @param {string} schoolId
  * @returns {Promise<Array>}
  */
-const getTeacherClasses = async (teacherId) => {
-  const assignments = await ClassTeacher.find({ teacherId })
+const getTeacherClasses = async (teacherId, schoolId) => {
+  const assignments = await ClassTeacher.find({ schoolId, teacherId })
     .populate('classId', 'name grade section')
     .sort({ createdAt: 1 });
 
@@ -234,7 +238,7 @@ const getTeacherClasses = async (teacherId) => {
   const Student = mongoose.model('Student');
   const classIds = assignments.map((a) => a.classId?._id).filter(Boolean);
   const counts = await Student.aggregate([
-    { $match: { classId: { $in: classIds }, isDeleted: false } },
+    { $match: { schoolId: new mongoose.Types.ObjectId(schoolId), classId: { $in: classIds }, isDeleted: false } },
     { $group: { _id: '$classId', count: { $sum: 1 } } },
   ]);
   const countMap = {};
@@ -250,14 +254,15 @@ const getTeacherClasses = async (teacherId) => {
 };
 
 /**
- * List students in a class (non-deleted), with user names.
+ * List students in a class (non-deleted), scoped to school.
  *
  * @param {string} classId
+ * @param {string} schoolId
  * @returns {Promise<Array>}
  */
-const getClassStudents = async (classId) => {
+const getClassStudents = async (classId, schoolId) => {
   const Student = mongoose.model('Student');
-  return Student.find({ classId, isDeleted: false })
+  return Student.find({ schoolId, classId, isDeleted: false })
     .populate('userId', 'name email')
     .sort({ createdAt: 1 });
 };

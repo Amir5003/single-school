@@ -7,6 +7,11 @@ import useApi from '../../hooks/useApi';
 import useAuth from '../../hooks/useAuth';
 import { staggerContainer, fadeInUp, getVariants } from '../../utils/animationVariants';
 import calculatePercentage from '../../utils/calculatePercentage';
+import FeesCard from '../../components/student/FeesCard';
+import HomeworkCard from '../../components/student/HomeworkCard';
+import NotificationsPanel from '../../components/student/NotificationsPanel';
+import { getStudentFees } from '../../api/fee.api';
+import { getStudentHomework } from '../../api/homework.api';
 
 function SummaryCard({ label, value, sub, linkTo, colour }) {
   const inner = (
@@ -30,12 +35,16 @@ export default function StudentDashboard() {
   const attendance = useApi(getAttendance);
   const marks = useApi(getMarks);
   const announcements = useApi(getStudentAnnouncements);
+  const fees = useApi(getStudentFees);
+  const homework = useApi(getStudentHomework);
 
   useEffect(() => {
     profile.execute();
     attendance.execute();
     marks.execute();
     announcements.execute();
+    fees.execute();
+    homework.execute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,6 +132,35 @@ export default function StudentDashboard() {
             </Link>
           ))}
         </motion.div>
+
+        {/* Fees */}
+        {fees.data?.data?.fees?.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">Recent Fees</h2>
+            <div className="space-y-3">
+              {fees.data.data.fees.slice(0, 3).map((fee) => (
+                <FeesCard key={fee._id} fee={fee} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Homework */}
+        {homework.data?.data?.homework?.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">Homework</h2>
+            <div className="space-y-3">
+              {homework.data.data.homework.slice(0, 3).map((hw) => (
+                <HomeworkCard key={hw._id} homework={hw} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Notifications */}
+        <div className="mt-8">
+          <NotificationsPanel />
+        </div>
       </motion.div>
     </Layout>
   );

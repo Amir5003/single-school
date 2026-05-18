@@ -14,7 +14,7 @@ const authenticate = (req, _res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { _id: decoded.id, role: decoded.role };
+    req.user = { _id: decoded.id, role: decoded.role, schoolId: decoded.schoolId || null };
     return next();
   } catch (err) {
     // Covers both TokenExpiredError and JsonWebTokenError

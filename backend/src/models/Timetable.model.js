@@ -6,6 +6,11 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 const timetableSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     classId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Class',
@@ -42,8 +47,8 @@ const timetableSchema = new mongoose.Schema(
   }
 );
 
-// Composite index for fast lookups by class + day (used in conflict checks and list)
-timetableSchema.index({ classId: 1, day: 1 });
+// Composite index for fast lookups by school + class + day
+timetableSchema.index({ schoolId: 1, classId: 1, day: 1 });
 
 const Timetable = mongoose.model('Timetable', timetableSchema);
 

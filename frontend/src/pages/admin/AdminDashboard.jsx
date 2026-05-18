@@ -3,18 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Layout from '../../components/common/Layout';
 import { getStudents, getTeachers, getClasses } from '../../api/admin.api';
-import { selectUser } from '../../redux/slices/authSlice';
-
-const QUICK_ACTIONS = [
-  { label: 'Manage Students', to: '/admin/students', color: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
-  { label: 'Manage Teachers', to: '/admin/teachers', color: 'bg-violet-50 text-violet-700 hover:bg-violet-100' },
-  { label: 'Manage Classes', to: '/admin/classes', color: 'bg-sky-50 text-sky-700 hover:bg-sky-100' },
-  { label: 'Timetable', to: '/admin/timetable', color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
-];
+import { selectUser, selectSchoolSlug } from '../../redux/slices/authSlice';
+import FeeManagementTable from '../../components/admin/FeeManagementTable';
 
 export default function AdminDashboard() {
   const user = useSelector(selectUser);
+  const schoolSlug = useSelector(selectSchoolSlug);
   const navigate = useNavigate();
+  const base = schoolSlug ? `/schools/${schoolSlug}` : '';
+
+  const QUICK_ACTIONS = [
+    { label: 'Manage Students', to: `${base}/admin/students`, color: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
+    { label: 'Manage Teachers', to: `${base}/admin/teachers`, color: 'bg-violet-50 text-violet-700 hover:bg-violet-100' },
+    { label: 'Manage Classes',  to: `${base}/admin/classes`,  color: 'bg-sky-50 text-sky-700 hover:bg-sky-100' },
+    { label: 'Timetable',       to: `${base}/admin/timetable`, color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+  ];
 
   const [counts, setCounts] = useState({ students: '—', teachers: '—', classes: '—' });
 
@@ -70,7 +73,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <Layout role="admin">
+    <Layout role="school-admin">
       {/* Greeting */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-800">
@@ -109,6 +112,11 @@ export default function AdminDashboard() {
             {action.label}
           </button>
         ))}
+      </div>
+
+      {/* Fee management */}
+      <div className="mt-10">
+        <FeeManagementTable />
       </div>
     </Layout>
   );

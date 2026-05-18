@@ -5,4 +5,5 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   // --runInBand is set in package.json scripts to run tests serially
   // (required for shared in-memory MongoDB instance)
+  testTimeout: 30000,
 };

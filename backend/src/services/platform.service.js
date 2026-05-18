@@ -1,0 +1,183 @@
+const School = require('../models/School.model');
+const User = require('../models/User.model');
+const Student = require('../models/Student.model');
+const Teacher = require('../models/Teacher.model');
+const Class = require('../models/Class.model');
+const ApiError = require('../utils/ApiError');
+
+/**
+ * List all schools with optional filters and pagination.
+ *
+ * @param {{ page?: number, limit?: number, search?: string, plan?: string, isActive?: boolean }} opts
+ * @returns {Promise<{ schools: School[], total: number, page: number, pages: number }>}
+ */
+const listSchools = async ({ page = 1, limit = 20, search, plan, isActive } = {}) => {
+  const filter = {};
+  if (search) {
+    filter.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { slug: { $regex: search, $options: 'i' } },
+    ];
+  }
+  if (plan !== undefined) filter.plan = plan;
+  if (isActive !== undefined) filter.isActive = isActive;
+
+  const skip = (page - 1) * limit;
+  const [schools, total] = await Promise.all([
+    School.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    School.countDocuments(filter),
+  ]);
+
+  return { schools, total, page, pages: Math.ceil(total / limit) };
+};
+
+/**
+ * Get a single school by its MongoDB _id.
+ *
+ * @param {string} id
+ * @returns {Promise<School>}
+ */
+const getSchoolById = async (id) => {
+  const school = await School.findById(id).lean();
+  if (!school) throw new ApiError(404, 'School not found');
+  return school;
+};
+
+/**
+ * Activate a school (set isActive = true).
+ *
+ * @param {string} id
+ * @returns {Promise<School>}
+ */
+const activateSchool = async (id) => {
+  const school = await School.findByIdAndUpdate(
+    id,
+    { isActive: true },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!school) throw new ApiError(404, 'School not found');
+  return school;
+};
+
+/**
+ * Deactivate a school (set isActive = false).
+ *
+ * @param {string} id
+ * @returns {Promise<School>}
+ */
+const deactivateSchool = async (id) => {
+  const school = await School.findByIdAndUpdate(
+    id,
+    { isActive: false },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!school) throw new ApiError(404, 'School not found');
+  return school;
+};
+
+/**
+ * Get aggregated analytics counts per school.
+ * Returns only counts — no individual student/teacher PII.
+ *
+ * @returns {Promise<Array<{ schoolId: string, schoolName: string, slug: string, isActive: boolean, plan: string, students: number, teachers: number, classes: number }>>}
+ */
+const getAnalytics = async () => {
+  const [schools, studentCounts, teacherCounts, classCounts] = await Promise.all([
+    School.find({}, 'name slug isActive plan').lean(),
+    Student.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      { $group: { _id: '$schoolId', count: { $sum: 1 } } },
+    ]),
+    Teacher.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      { $group: { _id: '$schoolId', count: { $sum: 1 } } },
+    ]),
+    Class.aggregate([{ $group: { _id: '$schoolId', count: { $sum: 1 } } }]),
+  ]);
+
+  const countMap = (arr) =>
+    arr.reduce((acc, { _id, count }) => {
+      acc[_id.toString()] = count;
+      return acc;
+    }, {});
+
+  const studentMap = countMap(studentCounts);
+  const teacherMap = countMap(teacherCounts);
+  const classMap = countMap(classCounts);
+
+  return schools.map((s) => ({
+    schoolId: s._id,
+    schoolName: s.name,
+    slug: s.slug,
+    isActive: s.isActive,
+    plan: s.plan,
+    students: studentMap[s._id.toString()] || 0,
+    teachers: teacherMap[s._id.toString()] || 0,
+    classes: classMap[s._id.toString()] || 0,
+  }));
+};
+
+/**
+ * List pending school-admin registrations (school-admin users with approvalStatus = 'pending').
+ *
+ * @returns {Promise<Array>}
+ */
+const listPendingRegistrations = async () => {
+  const users = await User.find(
+    { role: 'school-admin', approvalStatus: 'pending' },
+    '-password -refreshTokenHash'
+  )
+    .populate('schoolId', 'name slug createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
+  return users;
+};
+
+/**
+ * Approve a pending school-admin: activate user + school.
+ *
+ * @param {string} userId
+ * @returns {Promise<User>}
+ */
+const approveRegistration = async (userId) => {
+  const user = await User.findOneAndUpdate(
+    { _id: userId, role: 'school-admin', approvalStatus: 'pending' },
+    { approvalStatus: 'approved', isActive: true, rejectionRemark: null },
+    { new: true, select: '-password -refreshTokenHash' }
+  ).lean();
+  if (!user) throw new ApiError(404, 'Pending registration not found');
+
+  if (user.schoolId) {
+    await School.findByIdAndUpdate(user.schoolId, { isActive: true });
+  }
+
+  return user;
+};
+
+/**
+ * Reject a pending school-admin with an optional remark.
+ *
+ * @param {string} userId
+ * @param {string} [remark]
+ * @returns {Promise<User>}
+ */
+const rejectRegistration = async (userId, remark) => {
+  const user = await User.findOneAndUpdate(
+    { _id: userId, role: 'school-admin', approvalStatus: 'pending' },
+    { approvalStatus: 'rejected', rejectionRemark: remark || null },
+    { new: true, select: '-password -refreshTokenHash' }
+  ).lean();
+  if (!user) throw new ApiError(404, 'Pending registration not found');
+  return user;
+};
+
+module.exports = {
+  listSchools,
+  getSchoolById,
+  activateSchool,
+  deactivateSchool,
+  getAnalytics,
+  listPendingRegistrations,
+  approveRegistration,
+  rejectRegistration,
+};

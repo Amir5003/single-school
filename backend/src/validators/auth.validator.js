@@ -1,6 +1,6 @@
 const { body } = require('express-validator');
 
-const ROLES = ['admin', 'teacher', 'student'];
+const ROLES = ['school-admin', 'teacher', 'student', 'parent'];
 
 // Password must have: 1 uppercase, 1 digit, 1 special char, min 8 chars
 const PASSWORD_REGEX = /(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}/;
@@ -25,6 +25,14 @@ const registerValidator = [
   body('role')
     .isIn(ROLES)
     .withMessage(`Role must be one of: ${ROLES.join(', ')}`),
+
+  // schoolId is required for teacher/student/parent — not for school-admin (onboarding sets it)
+  body('schoolId')
+    .if(body('role').isIn(['teacher', 'student', 'parent']))
+    .notEmpty()
+    .withMessage('schoolId is required for this role')
+    .isMongoId()
+    .withMessage('schoolId must be a valid MongoDB ObjectId'),
 ];
 
 const loginValidator = [

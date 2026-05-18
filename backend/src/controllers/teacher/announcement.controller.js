@@ -11,10 +11,11 @@ const announcementService = require('../../services/announcement.service');
  */
 const createAnnouncement = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
     const announcement = await announcementService.createAnnouncement(
       teacher._id,
-      req.body
+      req.body,
+      req.school._id
     );
     res
       .status(201)
@@ -31,8 +32,8 @@ const createAnnouncement = async (req, res, next) => {
  */
 const getAnnouncements = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
-    const announcements = await announcementService.getTeacherAnnouncements(teacher._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
+    const announcements = await announcementService.getTeacherAnnouncements(teacher._id, req.school._id);
     res.json(
       new ApiResponse(200, { announcements }, 'Announcements retrieved successfully')
     );
@@ -50,11 +51,12 @@ const getAnnouncements = async (req, res, next) => {
  */
 const updateAnnouncement = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
     const announcement = await announcementService.updateAnnouncement(
       req.params.id,
       teacher._id,
-      req.body
+      req.body,
+      req.school._id
     );
     res.json(new ApiResponse(200, { announcement }, 'Announcement updated successfully'));
   } catch (err) {
@@ -69,8 +71,8 @@ const updateAnnouncement = async (req, res, next) => {
  */
 const deleteAnnouncement = async (req, res, next) => {
   try {
-    const teacher = await teacherService.getTeacherByUserId(req.user._id);
-    await announcementService.softDeleteAnnouncement(req.params.id, teacher._id);
+    const teacher = await teacherService.getTeacherByUserId(req.user._id, req.school._id);
+    await announcementService.softDeleteAnnouncement(req.params.id, teacher._id, req.school._id);
     res.status(204).send();
   } catch (err) {
     next(err);
