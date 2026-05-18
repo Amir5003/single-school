@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 /**
  * Shell layout shared by all authenticated role dashboards.
  * @param {object} props
- * @param {string} props.role    - 'admin' | 'teacher' | 'student'
+ * @param {string} props.role    - 'school-admin' | 'teacher' | 'student'
  * @param {React.ReactNode} props.children
  */
 export default function Layout({ role, children }) {

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const announcementSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     title: {
       type: String,
       required: [true, 'Title is required'],
@@ -27,14 +32,19 @@ const announcementSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    targetRole: {
+      type: String,
+      enum: ['all', 'teacher', 'student', 'parent'],
+      default: 'all',
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Fast descending list and active-filter scans
-announcementSchema.index({ publishedAt: -1 });
+announcementSchema.index({ schoolId: 1, createdAt: -1 });
+announcementSchema.index({ schoolId: 1, targetRole: 1 });
 announcementSchema.index({ isDeleted: 1 });
 
 const Announcement = mongoose.model('Announcement', announcementSchema);

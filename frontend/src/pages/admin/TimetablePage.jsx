@@ -260,7 +260,7 @@ export default function TimetablePage() {
   const selectedClass = classes.find((c) => c._id === selectedClassId);
 
   return (
-    <Layout role="admin">
+    <Layout role="school-admin">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-xl font-semibold text-gray-800">Timetable</h2>

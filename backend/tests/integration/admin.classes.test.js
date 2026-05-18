@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -8,8 +8,9 @@ const ADMIN = {
   name: 'Admin User',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
 };
+
+let testSchool;
 
 const TEACHER_RBAC = {
   name: 'Teacher RBAC',
@@ -22,6 +23,7 @@ const CLASS_BASE = {
   name: 'Class 10A',
   grade: '10',
   section: 'A',
+  academicYear: '2024-2025',
 };
 
 const STUDENT_BASE = {
@@ -52,7 +54,8 @@ const loginUser = async (email, password) => {
 };
 
 const getAdminCookie = async () => {
-  await createDirectUser(ADMIN);
+  testSchool = await createSchool();
+  await createSchoolAdmin(testSchool._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };
@@ -97,6 +100,7 @@ describe('POST /api/v1/admin/classes — create', () => {
       name: 'Class 10B',
       grade: '10',
       section: 'B',
+      academicYear: '2024-2025',
     });
     expect(res.statusCode).toBe(201);
   });
@@ -294,6 +298,7 @@ describe('DELETE /api/v1/admin/classes/:id', () => {
       name: 'Empty Class',
       grade: '11',
       section: 'B',
+      academicYear: '2024-2025',
     });
     const freshId = freshRes.body.data.class._id;
 

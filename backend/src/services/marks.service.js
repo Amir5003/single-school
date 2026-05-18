@@ -5,14 +5,15 @@ const ApiError = require('../utils/ApiError');
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Verify the teacher is assigned to the given class.
+ * Verify the teacher is assigned to the given class within the school.
  * Throws ApiError(403) if not.
  *
  * @param {string} classId
  * @param {string} teacherId
+ * @param {string} schoolId
  */
-const assertAssigned = async (classId, teacherId) => {
-  const assigned = await ClassTeacher.exists({ classId, teacherId });
+const assertAssigned = async (classId, teacherId, schoolId) => {
+  const assigned = await ClassTeacher.exists({ schoolId, classId, teacherId });
   if (!assigned) {
     throw new ApiError(403, 'You are not assigned to this class');
   }
@@ -28,13 +29,13 @@ const assertAssigned = async (classId, teacherId) => {
  * @param {string} teacherId  Teacher._id (used for class authorization)
  * @returns {Promise<Marks>}
  */
-const upsertMark = async (data, teacherId) => {
+const upsertMark = async (data, teacherId, schoolId) => {
   const { studentId, classId, subject, examType = 'final', marksObtained, maxMarks } = data;
 
-  await assertAssigned(classId, teacherId);
+  await assertAssigned(classId, teacherId, schoolId);
 
   const mark = await Marks.findOneAndUpdate(
-    { studentId, subject, classId, examType },
+    { schoolId, studentId, subject, classId, examType },
     { $set: { marksObtained, maxMarks: maxMarks ?? 100 } },
     { upsert: true, new: true, runValidators: true }
   );
@@ -50,10 +51,10 @@ const upsertMark = async (data, teacherId) => {
  * @param {string} teacherId
  * @returns {Promise<Marks[]>}
  */
-const getMarksByClass = async (classId, subject, teacherId) => {
-  await assertAssigned(classId, teacherId);
+const getMarksByClass = async (classId, subject, teacherId, schoolId) => {
+  await assertAssigned(classId, teacherId, schoolId);
 
-  return Marks.find({ classId, subject })
+  return Marks.find({ schoolId, classId, subject })
     .populate({
       path: 'studentId',
       select: 'enrollmentId',

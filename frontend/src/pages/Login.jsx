@@ -4,11 +4,16 @@ import { useDispatch } from 'react-redux';
 import { loginUser } from '../api/auth.api';
 import { setCredentials } from '../redux/slices/authSlice';
 
-const ROLE_DASHBOARD = {
-  admin: '/admin/dashboard',
-  teacher: '/teacher/dashboard',
-  student: '/student/dashboard',
-};
+function getDashboardPath(role, schoolSlug) {
+  if (role === 'super-admin') return '/platform/schools';
+  if (!schoolSlug) return '/';
+  const base = `/schools/${schoolSlug}`;
+  if (role === 'school-admin') return `${base}/admin/dashboard`;
+  if (role === 'teacher')      return `${base}/teacher/dashboard`;
+  if (role === 'student')      return `${base}/student/dashboard`;
+  if (role === 'parent')       return `${base}/parent/dashboard`;
+  return '/';
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -29,8 +34,11 @@ export default function Login() {
     try {
       const data = await loginUser({ email, password });
       const { user } = data.data;
-      dispatch(setCredentials({ user, role: user.role }));
-      navigate(ROLE_DASHBOARD[user.role] || '/');
+      // schoolId is populated on the backend: { _id, slug, name }
+      const schoolSlug = user.schoolId?.slug ?? null;
+      const schoolId   = user.schoolId?._id  ?? user.schoolId ?? null;
+      dispatch(setCredentials({ user, role: user.role, schoolSlug, schoolId }));
+      navigate(getDashboardPath(user.role, schoolSlug));
     } catch (err) {
       const status = err.response?.status;
       if (status === 422) {

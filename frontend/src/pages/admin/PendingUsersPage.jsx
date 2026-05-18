@@ -72,7 +72,7 @@ export default function PendingUsersPage() {
   };
 
   return (
-    <Layout role="admin">
+    <Layout role="school-admin">
       <div className="p-6">
         <h1 className="text-xl font-bold text-gray-800 mb-6">Pending Approvals</h1>
 

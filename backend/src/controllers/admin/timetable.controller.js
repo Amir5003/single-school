@@ -6,7 +6,7 @@ const timetableService = require('../../services/timetable.service');
  */
 const createEntry = async (req, res, next) => {
   try {
-    const entry = await timetableService.createEntry(req.body);
+    const entry = await timetableService.createEntry(req.body, req.school._id);
     res
       .status(201)
       .json(new ApiResponse(201, { entry }, 'Timetable entry created successfully'));
@@ -21,7 +21,7 @@ const createEntry = async (req, res, next) => {
 const listByClass = async (req, res, next) => {
   try {
     const { classId } = req.query;
-    const entries = await timetableService.listByClass(classId);
+    const entries = await timetableService.listByClass(classId, req.school._id);
     res.json(new ApiResponse(200, { entries }, 'Timetable retrieved successfully'));
   } catch (err) {
     next(err);
@@ -33,7 +33,7 @@ const listByClass = async (req, res, next) => {
  */
 const updateEntry = async (req, res, next) => {
   try {
-    const entry = await timetableService.updateEntry(req.params.id, req.body);
+    const entry = await timetableService.updateEntry(req.params.id, req.body, req.school._id);
     res.json(new ApiResponse(200, { entry }, 'Timetable entry updated successfully'));
   } catch (err) {
     next(err);
@@ -46,7 +46,7 @@ const updateEntry = async (req, res, next) => {
  */
 const deleteEntry = async (req, res, next) => {
   try {
-    await timetableService.deleteEntry(req.params.id);
+    await timetableService.deleteEntry(req.params.id, req.school._id);
     res.status(204).send();
   } catch (err) {
     next(err);

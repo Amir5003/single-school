@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -8,8 +8,9 @@ const ADMIN = {
   name: 'Admin User',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
 };
+
+let testSchool;
 
 const TEACHER_DATA = {
   name: 'Mr Ahmed',
@@ -22,6 +23,7 @@ const CLASS_DATA = {
   name: 'Class 10A',
   grade: '10',
   section: 'A',
+  academicYear: '2024-2025',
 };
 
 const ENTRY_BASE = {
@@ -44,7 +46,8 @@ const loginUser = async (email, password) => {
 };
 
 const getAdminCookie = async () => {
-  await createDirectUser(ADMIN);
+  testSchool = await createSchool();
+  await createSchoolAdmin(testSchool._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };
@@ -118,7 +121,7 @@ describe('Timetable CRUD', () => {
       const c2Res = await request(app)
         .post('/api/v1/admin/classes')
         .set('Cookie', cookie)
-        .send({ name: 'Class 10B', grade: '10', section: 'B' });
+        .send({ name: 'Class 10B', grade: '10', section: 'B', academicYear: '2024-2025' });
       const classId2 = c2Res.body.data.class._id;
 
       await createEntry(); // teacher in class 1, Monday 08:00–09:00

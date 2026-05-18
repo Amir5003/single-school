@@ -8,38 +8,45 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Create a new class.
- * Throws ApiError(409) on duplicate {grade, section}.
  *
- * @param {{ name, grade, section }} data
+ * @param {{ name, grade, section, academicYear }} data
+ * @param {string} schoolId
  * @returns {Promise<Class>}
  */
-const createClass = async (data) => {
-  const { name, grade, section } = data;
+const createClass = async (data, schoolId) => {
+  const { name, grade, section, academicYear } = data;
   const normalizedSection = (section || '').toUpperCase();
 
-  const existing = await Class.findOne({ grade, section: normalizedSection });
-  if (existing) {
-    throw new ApiError(409, `A class for Grade ${grade} Section ${normalizedSection} already exists`);
+  const [existingName, existingGradeSection] = await Promise.all([
+    Class.findOne({ schoolId, name, academicYear }),
+    Class.findOne({ schoolId, grade, section: normalizedSection, academicYear }),
+  ]);
+  if (existingName) {
+    throw new ApiError(409, `A class '${name}' for ${academicYear} already exists`);
+  }
+  if (existingGradeSection) {
+    throw new ApiError(409, `A class for grade ${grade} section ${normalizedSection} in ${academicYear} already exists`);
   }
 
-  return Class.create({ name, grade, section: normalizedSection });
+  return Class.create({ schoolId, name, grade, section: normalizedSection, academicYear });
 };
 
 /**
- * List all classes with student count and teacher count.
+ * List all classes with student count and teacher count, scoped to a school.
  *
+ * @param {string} schoolId
  * @returns {Promise<Array>}
  */
-const listClasses = async () => {
-  const classes = await Class.find().sort({ grade: 1, section: 1 });
+const listClasses = async (schoolId) => {
+  const classes = await Class.find({ schoolId }).sort({ grade: 1, section: 1 });
 
-  // Aggregate student and teacher counts per class in parallel
   const [studentCounts, teacherCounts] = await Promise.all([
     Student.aggregate([
-      { $match: { isDeleted: false, classId: { $ne: null } } },
+      { $match: { schoolId: new mongoose.Types.ObjectId(schoolId), isDeleted: false, classId: { $ne: null } } },
       { $group: { _id: '$classId', count: { $sum: 1 } } },
     ]),
     ClassTeacher.aggregate([
+      { $match: { schoolId: new mongoose.Types.ObjectId(schoolId) } },
       { $group: { _id: '$classId', count: { $sum: 1 } } },
     ]),
   ]);
@@ -62,22 +69,23 @@ const listClasses = async () => {
 };
 
 /**
- * Get a single class by ID with its assigned students and teacher assignments.
+ * Get a single class by ID, scoped to a school.
  *
  * @param {string} id  Class document _id
+ * @param {string} schoolId
  */
-const getClass = async (id) => {
-  const cls = await Class.findById(id);
+const getClass = async (id, schoolId) => {
+  const cls = await Class.findOne({ _id: id, schoolId });
   if (!cls) {
     throw new ApiError(404, 'Class not found');
   }
 
   const [students, assignments] = await Promise.all([
-    Student.find({ classId: id, isDeleted: false }).populate(
+    Student.find({ schoolId, classId: id, isDeleted: false }).populate(
       'userId',
       'name email phone'
     ),
-    ClassTeacher.find({ classId: id }).populate({
+    ClassTeacher.find({ schoolId, classId: id }).populate({
       path: 'teacherId',
       populate: { path: 'userId', select: 'name email' },
     }),
@@ -91,9 +99,10 @@ const getClass = async (id) => {
  *
  * @param {string} id   Class document _id
  * @param {object} data Partial fields to update
+ * @param {string} schoolId
  */
-const updateClass = async (id, data) => {
-  const cls = await Class.findById(id);
+const updateClass = async (id, data, schoolId) => {
+  const cls = await Class.findOne({ _id: id, schoolId });
   if (!cls) {
     throw new ApiError(404, 'Class not found');
   }
@@ -107,18 +116,18 @@ const updateClass = async (id, data) => {
 };
 
 /**
- * Delete a class.
- * Blocked if there are active (non-deleted) students assigned to it.
+ * Delete a class, scoped to a school.
  *
  * @param {string} id  Class document _id
+ * @param {string} schoolId
  */
-const deleteClass = async (id) => {
-  const cls = await Class.findById(id);
+const deleteClass = async (id, schoolId) => {
+  const cls = await Class.findOne({ _id: id, schoolId });
   if (!cls) {
     throw new ApiError(404, 'Class not found');
   }
 
-  const hasStudents = await Student.exists({ classId: id, isDeleted: false });
+  const hasStudents = await Student.exists({ schoolId, classId: id, isDeleted: false });
   if (hasStudents) {
     throw new ApiError(
       400,
@@ -130,21 +139,21 @@ const deleteClass = async (id) => {
 };
 
 /**
- * Bulk-assign students to a class.
- * Updates Student.classId for all provided student IDs.
+ * Bulk-assign students to a class, scoped to a school.
  *
  * @param {string}   classId
  * @param {string[]} studentIds
+ * @param {string}   schoolId
  * @returns {Promise<{ modifiedCount: number }>}
  */
-const assignStudents = async (classId, studentIds) => {
-  const cls = await Class.findById(classId);
+const assignStudents = async (classId, studentIds, schoolId) => {
+  const cls = await Class.findOne({ _id: classId, schoolId });
   if (!cls) {
     throw new ApiError(404, 'Class not found');
   }
 
   const result = await Student.updateMany(
-    { _id: { $in: studentIds }, isDeleted: false },
+    { schoolId, _id: { $in: studentIds }, isDeleted: false },
     { $set: { classId } }
   );
 

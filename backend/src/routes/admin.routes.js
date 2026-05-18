@@ -1,6 +1,7 @@
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const schoolScope = require('../middleware/schoolScope');
 const validate = require('../middleware/validate');
 
 const {
@@ -64,10 +65,17 @@ const {
   rejectUser,
 } = require('../controllers/admin/user.controller');
 
+const { createFeeValidator } = require('../validators/fee.validator');
+const feeController = require('../controllers/fee.controller');
+const notificationController = require('../controllers/notification.controller');
+const { validateBrandingUpdate } = require('../validators/school.validator');
+const { uploadLogo: uploadLogoMiddleware } = require('../middleware/uploadMiddleware');
+const brandingController = require('../controllers/admin/branding.controller');
+
 const router = express.Router();
 
-// All admin routes require authentication + admin role
-router.use(authenticate, authorize('admin'));
+// All admin routes require authentication + school scope + school-admin role
+router.use(authenticate, schoolScope, authorize('school-admin'));
 
 // ── Student CRUD ──────────────────────────────────────────────────────────────
 router.get('/students', listStudents);
@@ -107,4 +115,19 @@ router.delete('/announcements/:id', adminDeleteAnnouncement);
 router.get('/users/pending', listPendingUsers);
 router.put('/users/:id/approve', approveUser);
 router.put('/users/:id/reject', rejectUser);
+
+// ── Fees ─────────────────────────────────────────────────────────────────────
+router.post('/fees', createFeeValidator, validate, feeController.createFee);
+router.get('/fees', feeController.listFees);
+router.patch('/fees/:id/pay', feeController.markPaid);
+
+// ── School Branding ───────────────────────────────────────────────────────────
+router.patch('/school/branding', validateBrandingUpdate, validate, brandingController.updateBranding);
+router.post('/school/logo', uploadLogoMiddleware, brandingController.uploadLogo);
+
+// ── Notifications ───────────────────────────────────────────────────────────
+router.post('/notifications', notificationController.sendNotification);
+router.get('/notifications', notificationController.listNotifications);
+router.patch('/notifications/:id/read', notificationController.markRead);
+
 module.exports = router;

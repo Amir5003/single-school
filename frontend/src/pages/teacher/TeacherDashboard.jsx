@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import Layout from '../../components/common/Layout';
 import { getTeacherClasses } from '../../api/teacher.api';
+import HomeworkForm from '../../components/teacher/HomeworkForm';
 
 // ── Class card ────────────────────────────────────────────────────────────────
 
@@ -51,6 +54,8 @@ function ClassCard({ assignment, onAttendance, onMarks }) {
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
+  const schoolSlug = useSelector(selectSchoolSlug);
+  const base = schoolSlug ? `/schools/${schoolSlug}` : '';
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -95,13 +100,18 @@ export default function TeacherDashboard() {
               key={assignment.classId?._id ?? idx}
               assignment={assignment}
               onAttendance={(classId) =>
-                navigate(`/teacher/attendance?classId=${classId}&date=${today}`)
+                navigate(`${base}/teacher/attendance?classId=${classId}&date=${today}`)
               }
-              onMarks={(classId) => navigate(`/teacher/marks?classId=${classId}`)}
+              onMarks={(classId) => navigate(`${base}/teacher/marks?classId=${classId}`)}
             />
           ))}
         </div>
       )}
+
+      {/* Homework assignment */}
+      <div className="mt-10 max-w-lg">
+        <HomeworkForm onCreated={() => {}} />
+      </div>
     </Layout>
   );
 }

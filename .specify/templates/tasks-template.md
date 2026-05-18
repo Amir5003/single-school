@@ -69,6 +69,13 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
 
+**Multi-Tenancy Gate** *(required for any feature touching tenant-scoped data)*:
+- [ ] T00X Verify `School` model exists with `slug`, `name`, `plan`, `isActive` fields
+- [ ] T00X Verify `schoolId` field present on all affected tenant-scoped models (with compound index)
+- [ ] T00X Verify `schoolScope` middleware applied to all new authenticated routes
+- [ ] T00X Verify `slugToSchool` middleware applied to all new public `/schools/:schoolSlug/` routes
+- [ ] T00X Add cross-tenant leakage integration test (School A session MUST NOT see School B data)
+
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
 ---

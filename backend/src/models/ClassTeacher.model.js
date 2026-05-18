@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const classTeacherSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     classId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Class',
@@ -23,8 +28,10 @@ const classTeacherSchema = new mongoose.Schema(
   }
 );
 
-// A teacher can only be assigned to the same class for the same subject once
-classTeacherSchema.index({ classId: 1, teacherId: 1, subject: 1 }, { unique: true });
+// A teacher can only be assigned to the same class for the same subject once (scoped by school)
+classTeacherSchema.index({ schoolId: 1, classId: 1, teacherId: 1, subject: 1 }, { unique: true });
+classTeacherSchema.index({ schoolId: 1, classId: 1, teacherId: 1 });
+classTeacherSchema.index({ schoolId: 1, teacherId: 1 });
 
 const ClassTeacher = mongoose.model('ClassTeacher', classTeacherSchema);
 

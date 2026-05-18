@@ -25,15 +25,16 @@ const populateStudent = (query) =>
  * Create a student User + Student profile in a single transaction.
  *
  * @param {{ name, email, password, phone, enrollmentId, dateOfBirth, address }} data
+ * @param {string} schoolId  Injected from req.school._id — never from req.body
  * @returns {Promise<{ user, student }>}
  */
-const createStudent = async (data) => {
+const createStudent = async (data, schoolId) => {
   const { name, email, password, phone, enrollmentId, dateOfBirth, address } = data;
   const normalizedId = (enrollmentId || '').toUpperCase();
 
   // Pre-flight duplicate checks (cheaper than letting the DB throw 11000)
   const [dupEnrollment, dupEmail] = await Promise.all([
-    Student.findOne({ enrollmentId: normalizedId }),
+    Student.findOne({ schoolId, enrollmentId: normalizedId }),
     User.findOne({ email }),
   ]);
 
@@ -50,11 +51,11 @@ const createStudent = async (data) => {
   try {
     // Mongoose requires array form when passing a session to create()
     const [user] = await User.create(
-      [{ name, email, password, role: 'student', phone: phone || null }],
+      [{ name, email, password, role: 'student', phone: phone || null, schoolId }],
       { session }
     );
     const [student] = await Student.create(
-      [{ userId: user._id, enrollmentId: normalizedId, dateOfBirth, address: address || null }],
+      [{ schoolId, userId: user._id, enrollmentId: normalizedId, dateOfBirth, address: address || null }],
       { session }
     );
 
@@ -78,21 +79,20 @@ const createStudent = async (data) => {
 };
 
 /**
- * List students with optional search and pagination.
- * Searches by enrollmentId (Student) or name (User).
+ * List students with optional search and pagination, scoped to a school.
  *
  * @param {{ page?: number, limit?: number, search?: string }} options
+ * @param {string} schoolId
  * @returns {Promise<{ students, total, page, limit, totalPages }>}
  */
-const listStudents = async ({ page = 1, limit = 20, search = '' } = {}) => {
+const listStudents = async ({ page = 1, limit = 20, search = '' } = {}, schoolId) => {
   const skip = (Number(page) - 1) * Number(limit);
-  const filter = { isDeleted: false };
+  const filter = { schoolId, isDeleted: false };
 
   if (search && search.trim()) {
     const regex = new RegExp(search.trim(), 'i');
-    // Find User IDs whose name matches the search term (for cross-collection OR)
     const matchingUsers = await User.find(
-      { name: regex, role: 'student' },
+      { name: regex, role: 'student', schoolId },
       '_id'
     );
     const userIds = matchingUsers.map((u) => u._id);
@@ -117,14 +117,14 @@ const listStudents = async ({ page = 1, limit = 20, search = '' } = {}) => {
 };
 
 /**
- * Get a single student by their Student _id.
- * Returns 404 if not found or soft-deleted.
+ * Get a single student by their Student _id, scoped to a school.
  *
  * @param {string} id  Student document _id
+ * @param {string} schoolId
  */
-const getStudent = async (id) => {
+const getStudent = async (id, schoolId) => {
   const student = await populateStudent(
-    Student.findOne({ _id: id, isDeleted: false })
+    Student.findOne({ _id: id, schoolId, isDeleted: false })
   );
   if (!student) {
     throw new ApiError(404, 'Student not found');
@@ -134,14 +134,13 @@ const getStudent = async (id) => {
 
 /**
  * Partially update a student's profile.
- * Student fields: enrollmentId, dateOfBirth, address
- * User fields:    name, phone
  *
  * @param {string} id   Student document _id
  * @param {object} data Partial fields to update
+ * @param {string} schoolId
  */
-const updateStudent = async (id, data) => {
-  const student = await Student.findOne({ _id: id, isDeleted: false });
+const updateStudent = async (id, data, schoolId) => {
+  const student = await Student.findOne({ _id: id, schoolId, isDeleted: false });
   if (!student) {
     throw new ApiError(404, 'Student not found');
   }
@@ -171,13 +170,12 @@ const updateStudent = async (id, data) => {
 
 /**
  * Soft-delete a student.
- * Blocks deletion if Attendance or Marks records exist (warns admin).
- * Sets Student.isDeleted = true, Student.deletedAt = now, User.isActive = false.
  *
  * @param {string} id  Student document _id
+ * @param {string} schoolId
  */
-const softDeleteStudent = async (id) => {
-  const student = await Student.findById(id);
+const softDeleteStudent = async (id, schoolId) => {
+  const student = await Student.findOne({ _id: id, schoolId });
   if (!student || student.isDeleted) {
     throw new ApiError(404, 'Student not found');
   }
@@ -214,13 +212,14 @@ const softDeleteStudent = async (id) => {
 // ── Student self-read functions ───────────────────────────────────────────────
 
 /**
- * Get a student's own profile, scoped by their User._id.
+ * Get a student's own profile, scoped by their User._id and school.
  *
  * @param {string} userId  User._id from JWT
+ * @param {string} schoolId
  * @returns {Promise<Student>}
  */
-const getStudentProfile = async (userId) => {
-  const student = await Student.findOne({ userId, isDeleted: false })
+const getStudentProfile = async (userId, schoolId) => {
+  const student = await Student.findOne({ userId, schoolId, isDeleted: false })
     .populate('userId', 'name email phone role isActive')
     .populate('classId', 'name grade section');
 
@@ -231,19 +230,19 @@ const getStudentProfile = async (userId) => {
 };
 
 /**
- * Get timetable for the student's class.
- * Returns an empty array (not 404) when no class or no periods.
+ * Get timetable for the student's class, scoped to the school.
  *
  * @param {string} userId
+ * @param {string} schoolId
  * @returns {Promise<Timetable[]>}
  */
-const getStudentTimetable = async (userId) => {
-  const student = await Student.findOne({ userId, isDeleted: false }, 'classId');
+const getStudentTimetable = async (userId, schoolId) => {
+  const student = await Student.findOne({ userId, schoolId, isDeleted: false }, 'classId');
   if (!student || !student.classId) {
     return [];
   }
 
-  return Timetable.find({ classId: student.classId })
+  return Timetable.find({ schoolId, classId: student.classId })
     .populate({
       path: 'teacherId',
       select: 'userId',
@@ -254,19 +253,19 @@ const getStudentTimetable = async (userId) => {
 
 /**
  * Get attendance records for a student, optionally filtered by month.
- * Returns summary stats + individual records.
  *
  * @param {string} userId
- * @param {string} [month]  "YYYY-MM" — if omitted, returns all records
+ * @param {string} [month]  "YYYY-MM"
+ * @param {string} schoolId
  * @returns {Promise<{ totalDays, presentDays, absentDays, leaveDays, percentage, records }>}
  */
-const getStudentAttendance = async (userId, month) => {
-  const student = await Student.findOne({ userId, isDeleted: false }, '_id');
+const getStudentAttendance = async (userId, month, schoolId) => {
+  const student = await Student.findOne({ userId, schoolId, isDeleted: false }, '_id');
   if (!student) {
     throw new ApiError(404, 'Student profile not found');
   }
 
-  const filter = { studentId: student._id };
+  const filter = { schoolId, studentId: student._id };
 
   if (month) {
     // Validate YYYY-MM
@@ -296,18 +295,19 @@ const getStudentAttendance = async (userId, month) => {
 };
 
 /**
- * Get all marks for a student, with overall percentage across all entries.
+ * Get all marks for a student, scoped to the school.
  *
  * @param {string} userId
+ * @param {string} schoolId
  * @returns {Promise<{ marks, overallPercentage }>}
  */
-const getStudentMarks = async (userId) => {
-  const student = await Student.findOne({ userId, isDeleted: false }, '_id');
+const getStudentMarks = async (userId, schoolId) => {
+  const student = await Student.findOne({ userId, schoolId, isDeleted: false }, '_id');
   if (!student) {
     throw new ApiError(404, 'Student profile not found');
   }
 
-  const marks = await Marks.find({ studentId: student._id })
+  const marks = await Marks.find({ schoolId, studentId: student._id })
     .sort({ createdAt: -1 })
     .select('subject examType marksObtained maxMarks');
 
@@ -327,18 +327,19 @@ const getStudentMarks = async (userId) => {
 };
 
 /**
- * Get latest 20 active (non-deleted) announcements for students to read.
+ * Get latest 20 active announcements for students to read, scoped to the school.
  *
+ * @param {string} schoolId
  * @returns {Promise<Announcement[]>}
  */
-const getStudentAnnouncements = async () => {
-  return Announcement.find({ isDeleted: false })
+const getStudentAnnouncements = async (schoolId) => {
+  return Announcement.find({ schoolId, isDeleted: false, targetRole: { $in: ['all', 'student'] } })
     .populate({
       path: 'teacherId',
       select: 'userId',
       populate: { path: 'userId', select: 'name' },
     })
-    .sort({ publishedAt: -1 })
+    .sort({ createdAt: -1 })
     .limit(20);
 };
 

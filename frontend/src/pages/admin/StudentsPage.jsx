@@ -169,7 +169,7 @@ export default function StudentsPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <Layout role="admin">
+    <Layout role="school-admin">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <div>

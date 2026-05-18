@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 // Real Attendance model is registered via app; import after app to avoid race
 const Attendance = require('../../src/models/Attendance.model');
 
@@ -11,8 +11,9 @@ const ADMIN = {
   name: 'Admin User',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
 };
+
+let testSchool;
 
 const TEACHER = {
   name: 'Teacher User',
@@ -43,9 +44,9 @@ const loginUser = async (email, password) => {
   return { res, cookie: res.headers['set-cookie'] };
 };
 
-/** Register ADMIN + log in; returns cookie header string */
 const getAdminCookie = async () => {
-  await createDirectUser(ADMIN);
+  testSchool = await createSchool();
+  await createSchoolAdmin(testSchool._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };
@@ -270,6 +271,7 @@ describe('DELETE /api/v1/admin/students/:id — soft delete', () => {
     await Attendance.create({
       studentId: new mongoose.Types.ObjectId(studentId),
       classId: new mongoose.Types.ObjectId(),
+      schoolId: testSchool._id,
       date: new Date(),
       status: 'Present',
       markedBy: new mongoose.Types.ObjectId(),

@@ -24,12 +24,12 @@ describe('ProtectedRoute', () => {
 
   it('renders children when authenticated with correct role', () => {
     renderWithProviders(
-      <ProtectedRoute allowedRole="admin"><ProtectedContent /></ProtectedRoute>,
+      <ProtectedRoute allowedRole="school-admin"><ProtectedContent /></ProtectedRoute>,
       {
         preloadedState: {
           auth: {
             user: { name: 'Admin User' },
-            role: 'admin',
+            role: 'school-admin',
             isAuthenticated: true,
           },
           ui: { loading: false, toast: { message: '', type: '' } },
@@ -41,7 +41,7 @@ describe('ProtectedRoute', () => {
 
   it('redirects when authenticated but wrong role', () => {
     renderWithProviders(
-      <ProtectedRoute allowedRole="admin"><ProtectedContent /></ProtectedRoute>,
+      <ProtectedRoute allowedRole="school-admin"><ProtectedContent /></ProtectedRoute>,
       {
         preloadedState: {
           auth: {

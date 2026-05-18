@@ -77,3 +77,13 @@ export const approveUser = (id) =>
 
 export const rejectUser = (id) =>
   axiosInstance.put(`/admin/users/${id}/reject`).then((r) => r.data);
+
+// ── Branding ──────────────────────────────────────────────────────────────────
+
+export const updateBranding = (data) =>
+  axiosInstance.patch('/admin/school/branding', data).then((r) => r.data);
+
+export const uploadLogo = (formData) =>
+  axiosInstance.post('/admin/school/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const marksSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',
@@ -38,14 +43,14 @@ const marksSchema = new mongoose.Schema(
   }
 );
 
-// Prevents duplicate entry for same student+subject+class+examType combination
+// Prevents duplicate entry for same student+subject+class+examType combination within a school
 marksSchema.index(
-  { studentId: 1, subject: 1, classId: 1, examType: 1 },
+  { schoolId: 1, studentId: 1, subject: 1, classId: 1, examType: 1 },
   { unique: true }
 );
 
-// Fast lookups by student
-marksSchema.index({ studentId: 1 });
+marksSchema.index({ schoolId: 1, studentId: 1, examType: 1, subject: 1 });
+marksSchema.index({ schoolId: 1, classId: 1, examType: 1 });
 
 const Marks = mongoose.model('Marks', marksSchema);
 

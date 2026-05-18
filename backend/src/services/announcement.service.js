@@ -10,9 +10,9 @@ const ApiError = require('../utils/ApiError');
  * @param {{ title, content }} data
  * @returns {Promise<Announcement>}
  */
-const createAnnouncement = async (teacherId, data) => {
-  const { title, content } = data;
-  return Announcement.create({ title, content, teacherId });
+const createAnnouncement = async (teacherId, data, schoolId) => {
+  const { title, content, targetRole = 'all' } = data;
+  return Announcement.create({ title, content, targetRole, teacherId, schoolId });
 };
 
 /**
@@ -21,8 +21,8 @@ const createAnnouncement = async (teacherId, data) => {
  * @param {string} teacherId
  * @returns {Promise<Announcement[]>}
  */
-const getTeacherAnnouncements = async (teacherId) => {
-  return Announcement.find({ teacherId })
+const getTeacherAnnouncements = async (teacherId, schoolId) => {
+  return Announcement.find({ schoolId, teacherId })
     .sort({ publishedAt: -1 });
 };
 
@@ -35,8 +35,8 @@ const getTeacherAnnouncements = async (teacherId) => {
  * @param {{ title?, content? }} data
  * @returns {Promise<Announcement>}
  */
-const updateAnnouncement = async (id, teacherId, data) => {
-  const announcement = await Announcement.findById(id);
+const updateAnnouncement = async (id, teacherId, data, schoolId) => {
+  const announcement = await Announcement.findOne({ _id: id, schoolId });
   if (!announcement) {
     throw new ApiError(404, 'Announcement not found');
   }
@@ -59,8 +59,8 @@ const updateAnnouncement = async (id, teacherId, data) => {
  * @param {string} id
  * @param {string} teacherId
  */
-const softDeleteAnnouncement = async (id, teacherId) => {
-  const announcement = await Announcement.findById(id);
+const softDeleteAnnouncement = async (id, teacherId, schoolId) => {
+  const announcement = await Announcement.findOne({ _id: id, schoolId });
   if (!announcement) {
     throw new ApiError(404, 'Announcement not found');
   }
@@ -78,8 +78,13 @@ const softDeleteAnnouncement = async (id, teacherId) => {
  * @param {number} [limit=20]
  * @returns {Promise<Announcement[]>}
  */
-const getAllActiveAnnouncements = async (limit = 20) => {
-  return Announcement.find({ isDeleted: false })
+const getAllActiveAnnouncements = async (limit = 20, schoolId) => {
+  const filter = { isDeleted: false };
+  if (schoolId) {
+    filter.schoolId = schoolId;
+    filter.targetRole = { $in: ['all', 'student'] };
+  }
+  return Announcement.find(filter)
     .populate({
       path: 'teacherId',
       populate: { path: 'userId', select: 'name' },
@@ -95,8 +100,8 @@ const getAllActiveAnnouncements = async (limit = 20) => {
  * @param {{ title?, content? }} data
  * @returns {Promise<Announcement>}
  */
-const adminUpdateAnnouncement = async (id, data) => {
-  const announcement = await Announcement.findById(id);
+const adminUpdateAnnouncement = async (id, data, schoolId) => {
+  const announcement = await Announcement.findOne({ _id: id, schoolId });
   if (!announcement) {
     throw new ApiError(404, 'Announcement not found');
   }
@@ -114,8 +119,8 @@ const adminUpdateAnnouncement = async (id, data) => {
  *
  * @param {string} id
  */
-const adminDeleteAnnouncement = async (id) => {
-  const announcement = await Announcement.findById(id);
+const adminDeleteAnnouncement = async (id, schoolId) => {
+  const announcement = await Announcement.findOne({ _id: id, schoolId });
   if (!announcement) {
     throw new ApiError(404, 'Announcement not found');
   }

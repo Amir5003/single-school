@@ -7,6 +7,8 @@ process.env.PORT = process.env.PORT || '5001';
 process.env.JWT_SECRET =
   process.env.JWT_SECRET || 'test-jwt-secret-key-minimum-32-chars!!';
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+process.env.REFRESH_TOKEN_SECRET =
+  process.env.REFRESH_TOKEN_SECRET || 'test-refresh-secret-min-32-chars!!!';
 process.env.NODE_ENV = 'test';
 // MONGO_URI placeholder — overridden below once MongoMemoryReplSet starts
 process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb://placeholder/test';

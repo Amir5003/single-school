@@ -20,14 +20,15 @@ const toUTCMidnight = (raw) => {
 };
 
 /**
- * Verify the teacher is assigned to the given class.
+ * Verify the teacher is assigned to the given class within the school.
  * Throws ApiError(403) if not.
  *
  * @param {string} classId
  * @param {string} teacherId
+ * @param {string} schoolId
  */
-const assertAssigned = async (classId, teacherId) => {
-  const assigned = await ClassTeacher.exists({ classId, teacherId });
+const assertAssigned = async (classId, teacherId, schoolId) => {
+  const assigned = await ClassTeacher.exists({ schoolId, classId, teacherId });
   if (!assigned) {
     throw new ApiError(403, 'You are not assigned to this class');
   }
@@ -44,7 +45,7 @@ const assertAssigned = async (classId, teacherId) => {
  * @param {string}  teacherId  Teacher._id
  * @returns {Promise<{ saved: number }>}
  */
-const markBulkAttendance = async (classId, date, records, teacherId) => {
+const markBulkAttendance = async (classId, date, records, teacherId, schoolId) => {
   const utcDate = toUTCMidnight(date);
 
   // Block future dates
@@ -53,7 +54,7 @@ const markBulkAttendance = async (classId, date, records, teacherId) => {
     throw new ApiError(400, 'Cannot mark attendance for a future date');
   }
 
-  await assertAssigned(classId, teacherId);
+  await assertAssigned(classId, teacherId, schoolId);
 
   if (!Array.isArray(records) || records.length === 0) {
     throw new ApiError(400, 'Attendance records array must not be empty');
@@ -61,8 +62,8 @@ const markBulkAttendance = async (classId, date, records, teacherId) => {
 
   const ops = records.map(({ studentId, status }) => ({
     updateOne: {
-      filter: { studentId, date: utcDate },
-      update: { $set: { studentId, classId, date: utcDate, status, markedBy: teacherId } },
+      filter: { schoolId, studentId, date: utcDate },
+      update: { $set: { schoolId, studentId, classId, date: utcDate, status, markedBy: teacherId } },
       upsert: true,
     },
   }));
@@ -80,12 +81,12 @@ const markBulkAttendance = async (classId, date, records, teacherId) => {
  * @param {string}  teacherId
  * @returns {Promise<Attendance[]>}
  */
-const getAttendanceByClassDate = async (classId, date, teacherId) => {
+const getAttendanceByClassDate = async (classId, date, teacherId, schoolId) => {
   const utcDate = toUTCMidnight(date);
 
-  await assertAssigned(classId, teacherId);
+  await assertAssigned(classId, teacherId, schoolId);
 
-  return Attendance.find({ classId, date: utcDate })
+  return Attendance.find({ schoolId, classId, date: utcDate })
     .populate({
       path: 'studentId',
       select: 'enrollmentId',

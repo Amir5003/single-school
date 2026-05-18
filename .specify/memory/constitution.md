@@ -1,38 +1,57 @@
 <!-- 
-CONSTITUTION SYNC IMPACT REPORT - AMENDMENT 1 (2026-04-07)
-Version: 1.1.0 (Minor Amendment)
+CONSTITUTION SYNC IMPACT REPORT - AMENDMENT 2 (2026-05-17)
+Version: 2.0.0 (MAJOR Amendment)
+Previous Version: 1.1.0
 Ratified: 2026-04-07
-Last Amended: 2026-04-07
-Amendment Type: MINOR (New Principle Added)
+Last Amended: 2026-05-17
+Amendment Type: MAJOR — product scope redefined from single-school to multi-school SaaS platform
 
-ORIGINAL PRINCIPLES (v1.0.0):
+RATIONALE FOR MAJOR BUMP:
+The product is fundamentally converting from a single-school system to a multi-tenant SaaS
+platform serving multiple schools. This change:
+- Redefines the entire data model (schoolId added to all tenant-scoped collections)
+- Introduces a new School entity and slug-based identification
+- Adds a new super-admin role with platform-wide access
+- Makes the existing single-tenant architecture backward-incompatible
+All previously valid deployments would require migration — hence MAJOR bump.
+
+ORIGINAL PRINCIPLES (v1.1.0):
 - I. Code Quality
 - II. Testing Standards
 - III. User Experience Consistency
 - IV. Performance Requirements
 - V. Security
 - VI. Scalability
+- VII. UI Animation & Modern Design
+
+MODIFIED PRINCIPLES:
+- V. Security: Added cross-tenant data isolation and super-admin RBAC requirements
+- VI. Scalability: Redefined to mandate multi-tenant architecture, school slug approach,
+  schoolId compound indexing, and stateless tenant resolution
 
 NEW PRINCIPLE ADDED:
-- VII. UI Animation & Modern Design (emphasis on student module, animations, visual excellence)
+- VIII. Multi-Tenancy & School Isolation (slug-based URL identity + JWT-embedded schoolId
+  for internal scoping; compound indexes; super-admin role)
 
 SECTIONS UPDATED:
-- Technology Stack & Architecture Standards: Added UI libraries and animation frameworks
-- Development Workflow: Updated principle count references (six → seven)
+- Technology Stack & Architecture Standards: School model, schoolScope middleware,
+  slug-based public routing, super-admin tier
+- Development Workflow: Updated principle count references (seven → eight),
+  added multi-tenancy as a Phase 2 foundational gate
 
-REATIONALE FOR VERSION BUMP:
-MINOR bump (1.0.0 → 1.1.0): Adding new principle with testable requirements and mandatory enforcement
+TEMPLATES UPDATED:
+- plan-template.md: Constitution Check references 8 principles ✅
+- spec-template.md: Added multi-tenancy scope note ✅
+- tasks-template.md: Added multi-tenancy as foundational gate requirement ✅
 
-TEMPLATES TO UPDATE:
-- spec-template.md: Add constitution alignment check
-- plan-template.md: Add principle validation section
-- tasks-template.md: Add principle-driven categorization
-- checklist-template.md: Add principle compliance checklist
-
-FOLLOW-UP: None - fully specified at amendment
+FOLLOW-UP TODOs:
+- TODO(SLUG_MIGRATION): Existing single-school data will need a migration script to assign
+  existing records to a default School document. Track in Phase 2 (002-multi-tenant-saas) tasks.
+- TODO(SUPER_ADMIN_RATIFICATION_DATE): Confirm super-admin feature ratification with team
+  before enabling in production.
 -->
 
-# MERN-based School Management System Constitution
+# MERN-based Multi-School Management Platform Constitution
 
 ## Core Principles
 
@@ -73,22 +92,43 @@ FOLLOW-UP: None - fully specified at amendment
 
 ### V. Security
 **Non-Negotiable Requirements:**
-- MUST implement JWT-based authentication with secure token storage (httpOnly cookies or secure local storage practices)
-- MUST enforce role-based access control (RBAC) with three distinct roles: Admin (full system access), Teacher (class and student data access), Student (own data only)
+- MUST implement JWT-based authentication with secure token storage (httpOnly cookies, `secure: true`, `sameSite: 'none'` in production)
+- MUST enforce role-based access control (RBAC) with four distinct roles: Super-Admin (platform-wide access, all schools), Admin (full access within their school only), Teacher (class and student data within their school), Student (own data only within their school)
 - MUST protect all sensitive routes with middleware authentication checks on every request
-- MUST never log passwords or sensitive credentials; use encrypted fields for sensitive data at rest
-- MUST validate and sanitize all user inputs to prevent injection attacks (SQL injection, XSS)
+- MUST NEVER log passwords or sensitive credentials; use encrypted fields for sensitive data at rest
+- MUST validate and sanitize all user inputs to prevent injection attacks (SQL injection, XSS, NoSQL injection)
+- MUST enforce cross-tenant isolation: no API endpoint SHALL return or modify data belonging to a school other than the one embedded in the authenticated user's JWT — this is a hard security boundary, not a best-effort check
+- MUST validate `schoolId` at the service layer on every query, even when `req.schoolId` is derived from a trusted JWT, as defense-in-depth against middleware bypass
+- MUST restrict super-admin endpoints to the super-admin role exclusively; no other role may access platform management routes
 
-**Rationale:** JWT is industry standard for stateless authentication. RBAC ensures data isolation between user types. Route protection prevents unauthorized access. Encryption and sanitization protect against common web vulnerabilities.
+**Rationale:** JWT is industry standard for stateless authentication. Four-tier RBAC ensures strict data isolation between user types and between schools. Cross-tenant isolation is the single most critical security requirement for a multi-tenant SaaS platform — a breach here leaks data across all schools. Defense-in-depth at the service layer prevents single-point middleware failures from exposing tenant data.
 
 ### VI. Scalability
 **Non-Negotiable Requirements:**
-- MUST design database schemas to accommodate future extensions (fees management, exam results, course hierarchies, notification system)
+- MUST support multi-tenant architecture: every tenant-scoped collection (Student, Teacher, Class,
+  ClassTeacher, Timetable, Attendance, Marks, Announcement) MUST carry a `schoolId` field
+  (ObjectId reference to the School document) with a compound index on `(schoolId, <primary lookup field>)`
+- MUST identify schools via a human-readable `slug` field (URL-safe, lowercase, hyphenated, globally unique,
+  e.g., `lincoln-high`). The slug is used in public-facing URLs (`/schools/:schoolSlug/...`);
+  internal authenticated routes resolve school context from `schoolId` embedded in the JWT
+- MUST embed `schoolId` in the JWT payload at login so all authenticated requests carry tenant context
+  without relying on URL parameters — reduces attack surface and simplifies middleware
+- MUST implement a `schoolScope` middleware that attaches `req.schoolId` from the JWT on every
+  authenticated request; all service-layer queries MUST include `schoolId: req.schoolId` as an
+  implicit filter (no service function may query tenant-scoped collections without it)
+- MUST design database schemas to accommodate future extensions (fees management, exam results,
+  notification system) with `schoolId` already present to avoid costly schema migrations
 - MUST keep services loosely coupled through well-defined APIs and minimal cross-service dependencies
 - MUST implement soft delete patterns where historical records are needed (student enrollments, grade changes)
 - MUST structure code to support horizontal scaling (stateless services, database replication ready)
+- MUST support a super-admin portal that can manage school onboarding, subscription status, and
+  cross-school analytics without being scoped to any single `schoolId`
 
-**Rationale:** Schema design prevents future data model refactoring. Loose coupling allows independent service scaling. Soft deletes maintain audit trails. Stateless architecture enables easy deployment scaling.
+**Rationale:** Multi-tenancy is the foundational architectural requirement as of v2.0.0. Slug-based
+public identity gives each school a clean canonical URL. JWT-embedded schoolId prevents URL-parameter
+spoofing and centralises tenant resolution in a single trusted location. Compound indexes ensure
+queries remain fast as the number of schools and records grows. Stateless design enables horizontal
+scaling of API servers.
 
 ### VII. UI Animation & Modern Design
 **Non-Negotiable Requirements:**
@@ -107,14 +147,70 @@ FOLLOW-UP: None - fully specified at amendment
 
 **Rationale:** Animations enhance perceived performance and user engagement. Student module benefits most from polish as it's the primary user-facing interface. Modern design attracts and retains users. Performance and accessibility ensure animations don't harm UX. Consistent timing creates professional feel.
 
+### VIII. Multi-Tenancy & School Isolation
+
+**Non-Negotiable Requirements:**
+
+**School Identity & Slug:**
+- MUST define a `School` document with fields: `_id` (ObjectId), `name` (string), `slug`
+  (unique URL-safe string, e.g., `springfield-elementary`), `plan` (enum: `free|standard|premium`),
+  `isActive` (boolean), `createdAt`, `updatedAt`
+- The `slug` MUST be generated at school creation (lowercase, hyphen-separated, derived from name),
+  MUST be immutable after first use in public URLs, and MUST be globally unique at the platform level
+- MUST expose school-specific public pages at `/schools/:schoolSlug` (registration form, timetable,
+  announcements) — no authentication required for read-only public routes
+- MUST NOT use the slug as the primary database key for tenant scoping; always resolve slug →
+  `schoolId` (ObjectId) at the route/middleware layer and use `schoolId` in all DB queries
+
+**Tenant Data Isolation:**
+- Every tenant-scoped model MUST declare `schoolId: { type: ObjectId, ref: 'School', required: true,
+  index: true }` and MUST include compound indexes covering the most common query patterns
+- The `schoolScope` middleware MUST run after `authenticate` on all non-public authenticated routes;
+  it extracts `schoolId` from `req.user` (JWT payload) and sets `req.schoolId`; requests lacking a
+  valid `schoolId` MUST be rejected with HTTP 403
+- No service function operating on tenant-scoped data may accept a `schoolId` argument from the
+  controller — it MUST be injected exclusively via `req.schoolId` to prevent controller-level
+  tenant spoofing
+- Integration tests MUST assert that School A's data is never accessible from School B's
+  authenticated session (cross-tenant leakage tests are mandatory, not optional)
+
+**Super-Admin Tier:**
+- MUST provide a `super-admin` role that is NOT school-scoped; super-admin JWT does NOT embed a
+  `schoolId` and bypasses the `schoolScope` middleware
+- Super-admin routes MUST live under a separate prefix (`/api/v1/platform/...`) and MUST be
+  protected by an `authorize('super-admin')` guard — no other role may reach these routes
+- Super-admin capabilities: school CRUD, user-across-school lookup (read-only), plan management,
+  platform-wide analytics; super-admins MUST NOT be able to directly read student/marks/attendance
+  records of any school without explicit audit trail
+
+**Migration & Backward Compatibility:**
+- All existing single-school data MUST be migrated to a default School document during the
+  002-multi-tenant-saas deployment; migration scripts MUST be idempotent and reversible
+- TODO(SLUG_MIGRATION): Draft and test migration script before deploying to production
+
+**Rationale:** Multi-tenancy without strict isolation is a data breach waiting to happen. Using
+slug only for public URLs (never as the DB key) prevents URL-guessing-based data access. Injecting
+`schoolId` from JWT rather than request parameters closes a common tenant-spoofing attack vector.
+Mandatory cross-tenant leakage tests ensure isolation is verified in CI, not just assumed.
+
 ## Technology Stack & Architecture Standards
 
-**Backend:** Node.js + Express.js with MongoDB  
-**Frontend:** React.js with Redux for state management  
-**Database:** MongoDB with Mongoose ODM  
-**Authentication:** JWT with role-based middleware  
-**Testing:** Jest for backend, Vitest for frontend, Supertest for API integration tests  
-**UI & Animation:** Tailwind CSS + Framer Motion (or React Spring) for modern design and smooth animations  
+## Technology Stack & Architecture Standards
+
+**Backend:** Node.js + Express.js with MongoDB
+**Frontend:** React.js with Redux for state management
+**Database:** MongoDB with Mongoose ODM
+**Authentication:** JWT with role-based middleware; `schoolId` embedded in payload for tenant scoping
+**Testing:** Jest for backend, Vitest for frontend, Supertest for API integration tests
+**UI & Animation:** Tailwind CSS + Framer Motion (or React Spring) for modern design and smooth animations
+
+**Multi-Tenancy Standards:**
+- MUST add `School` model with `slug`, `name`, `plan`, `isActive` fields
+- MUST add `schoolId` to all tenant-scoped Mongoose schemas with compound indexes
+- MUST implement `schoolScope` middleware (runs after `authenticate`; sets `req.schoolId`)
+- MUST implement `slugToSchool` middleware for public routes that resolve `:schoolSlug` → `schoolId`
+- MUST add `super-admin` role and `/api/v1/platform/` prefix for platform management routes
+- MUST implement `resolveSlug` service that caches slug→schoolId lookups (Redis or in-memory LRU)
 
 **Design Standards:**
 - MUST use Tailwind CSS for consistent styling and rapid modern UI development
@@ -126,7 +222,9 @@ FOLLOW-UP: None - fully specified at amendment
 - Backend structured as: `/routes`, `/controllers`, `/services`, `/models`, `/middleware`, `/utils`
 - Frontend structured as: `/components`, `/pages`, `/redux`, `/utils`, `/hooks`, `/api`
 - All API routes MUST be prefixed with `/api/v1` for versioning
-- Database operations MUST flow through service layer (never direct controller access to models)
+- Tenant-authenticated routes MUST include `authenticate` → `schoolScope` → `authorize(role)` middleware chain
+- Public school routes MUST include `slugToSchool` middleware to resolve school context
+- Database operations MUST flow through service layer (controllers never import models directly)
 
 ## Development Workflow & Quality Gates
 
@@ -134,18 +232,22 @@ FOLLOW-UP: None - fully specified at amendment
 - All PRs MUST pass linting (ESLint), formatting (Prettier), and syntax validation before review
 - All PRs MUST include tests demonstrating the feature works as specified
 - All PRs MUST be reviewed by at least one team member with no approvals from authors of related code
-- All PRs MUST verify compliance against all seven core principles listed above
+- All PRs MUST verify compliance against all **eight** core principles listed above
+- All PRs touching tenant-scoped data MUST include at least one cross-tenant isolation assertion
 
 **Deployment Gates:**
 - MUST pass all test suites (unit tests, integration tests) with >70% coverage
 - MUST verify API response times against Performance Requirements (IV)
 - MUST confirm all sensitive routes are protected with security middleware
-- MUST validate RBAC enforcement for Admin, Teacher, and Student roles
+- MUST validate RBAC enforcement for Super-Admin, Admin, Teacher, and Student roles
+- MUST verify `schoolScope` middleware is applied to every non-public authenticated route
+- MUST confirm no API endpoint returns data outside the caller's `schoolId` scope
 
 **Issue Tracking & Specification:**
 - Every feature MUST be specified in accordance with Feature Specification template
-- Every implementation plan MUST include a Constitution Check section verifying alignment with all seven core principles
+- Every implementation plan MUST include a Constitution Check section verifying alignment with all **eight** core principles
 - Every task MUST be categorized by principle alignment (which principle it delivers/improves)
+- Every task touching multi-tenant data MUST explicitly note which `schoolId` scoping pattern it implements (Principle VIII)
 - Every Student module feature MUST explicitly plan for animation and modern design implementation (Principle VII)
 
 ## Governance
@@ -168,4 +270,4 @@ FOLLOW-UP: None - fully specified at amendment
 - Exceptions to principles MUST be raised in team discussion, documented in PR, and tracked as technical debt
 - No feature branch SHALL merge to main without principle compliance verification
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-07 | **Last Amended**: 2026-04-07
+**Version**: 2.0.0 | **Ratified**: 2026-04-07 | **Last Amended**: 2026-05-17

@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -8,7 +8,7 @@ const ADMIN = {
   name: 'Test Admin',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
+  role: 'school-admin',
 };
 
 const TEACHER = {
@@ -174,9 +174,11 @@ describe('RBAC — role enforcement', () => {
   let studentCookie;
 
   beforeEach(async () => {
-    await createDirectUser(ADMIN);
-    await createDirectUser(TEACHER);
-    await createDirectUser(STUDENT);
+    // Roles requiring schoolScope need a school in the JWT
+    const school = await createSchool();
+    await createSchoolAdmin(school._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
+    await createDirectUser({ ...TEACHER, schoolId: school._id });
+    await createDirectUser({ ...STUDENT, schoolId: school._id });
     ({ cookie: adminCookie } = await loginUser(ADMIN.email, ADMIN.password));
     ({ cookie: teacherCookie } = await loginUser(TEACHER.email, TEACHER.password));
     ({ cookie: studentCookie } = await loginUser(STUDENT.email, STUDENT.password));

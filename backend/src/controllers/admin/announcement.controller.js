@@ -9,8 +9,7 @@ const announcementService = require('../../services/announcement.service');
  */
 const listAnnouncements = async (req, res, next) => {
   try {
-    // Re-use the active announcements service but with a high limit
-    const announcements = await announcementService.getAllActiveAnnouncements(200);
+    const announcements = await announcementService.getAllActiveAnnouncements(200, req.school._id);
     res.json(
       new ApiResponse(200, { announcements }, 'Announcements retrieved successfully')
     );
@@ -29,7 +28,8 @@ const updateAnnouncement = async (req, res, next) => {
   try {
     const announcement = await announcementService.adminUpdateAnnouncement(
       req.params.id,
-      req.body
+      req.body,
+      req.school._id
     );
     res.json(
       new ApiResponse(200, { announcement }, 'Announcement updated successfully')
@@ -46,7 +46,7 @@ const updateAnnouncement = async (req, res, next) => {
  */
 const deleteAnnouncement = async (req, res, next) => {
   try {
-    await announcementService.adminDeleteAnnouncement(req.params.id);
+    await announcementService.adminDeleteAnnouncement(req.params.id, req.school._id);
     res.json(new ApiResponse(200, null, 'Announcement deleted successfully'));
   } catch (err) {
     next(err);

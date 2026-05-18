@@ -16,23 +16,68 @@ export const injectNavigate = (navigate) => {
   _navigate = navigate;
 };
 
-// ── Response interceptor — handle 401 globally ───────────────────────────────
+// ── Token refresh state ───────────────────────────────────────────────────────
+let _isRefreshing = false;
+let _refreshQueue = [];
+
+function onRefreshed() {
+  _refreshQueue.forEach((resolve) => resolve());
+  _refreshQueue = [];
+}
+
+function addToRefreshQueue() {
+  return new Promise((resolve) => _refreshQueue.push(resolve));
+}
+
+function redirectToLogin() {
+  if (_store) {
+    import('../redux/slices/authSlice').then(({ clearCredentials }) => {
+      _store.dispatch(clearCredentials());
+    });
+  }
+  const href = _navigate ? null : window.location.href;
+  if (_navigate) {
+    _navigate('/login');
+  } else if (!href?.includes('/login')) {
+    window.location.href = '/login';
+  }
+}
+
+// ── Response interceptor — 401: attempt refresh then retry ───────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      if (_store) {
-        // Dynamic import to avoid circular dependency at module load time
-        import('../redux/slices/authSlice').then(({ clearCredentials }) => {
-          _store.dispatch(clearCredentials());
-        });
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Don't retry auth or refresh endpoints themselves
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/login')
+    ) {
+      if (_isRefreshing) {
+        // Wait for the ongoing refresh, then retry
+        await addToRefreshQueue();
+        return axiosInstance(originalRequest);
       }
-      if (_navigate) {
-        _navigate('/login');
-      } else {
-        window.location.href = '/login';
+
+      originalRequest._retry = true;
+      _isRefreshing = true;
+
+      try {
+        await axiosInstance.post('/auth/refresh');
+        onRefreshed();
+        return axiosInstance(originalRequest);
+      } catch {
+        _refreshQueue = [];
+        redirectToLogin();
+        return Promise.reject(error);
+      } finally {
+        _isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );

@@ -23,8 +23,17 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'teacher', 'student'],
+      enum: ['super-admin', 'school-admin', 'teacher', 'student', 'parent'],
       required: [true, 'Role is required'],
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      default: null,
+    },
+    refreshTokenHash: {
+      type: String,
+      default: null,
     },
     phone: {
       type: String,
@@ -40,17 +49,25 @@ const userSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected'],
       default: 'approved',
     },
+    rejectionRemark: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
     toJSON: {
       transform(_doc, ret) {
         delete ret.password;
+        delete ret.refreshTokenHash;
         return ret;
       },
     },
   }
 );
+
+userSchema.index({ schoolId: 1, role: 1 });
+userSchema.index({ schoolId: 1, isActive: 1 });
 
 // Hash password only when it has been modified
 // Mongoose 8: use async without `next` parameter — return the Promise, don't call next()

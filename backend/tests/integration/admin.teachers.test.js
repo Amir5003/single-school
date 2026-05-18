@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -8,8 +8,9 @@ const ADMIN = {
   name: 'Admin User',
   email: 'admin@school.test',
   password: 'Admin@1234',
-  role: 'admin',
 };
+
+let testSchool;
 
 /** Used only for the RBAC 403 check — registered directly as 'teacher' role user. */
 const TEACHER_RBAC = {
@@ -30,6 +31,7 @@ const CLASS_BASE = {
   name: 'Class 10A',
   grade: '10',
   section: 'A',
+  academicYear: '2024-2025',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -45,7 +47,8 @@ const loginUser = async (email, password) => {
 };
 
 const getAdminCookie = async () => {
-  await createDirectUser(ADMIN);
+  testSchool = await createSchool();
+  await createSchoolAdmin(testSchool._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };

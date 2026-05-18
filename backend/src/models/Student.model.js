@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema(
   {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: [true, 'School reference is required'],
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -11,7 +16,6 @@ const studentSchema = new mongoose.Schema(
     enrollmentId: {
       type: String,
       required: [true, 'Enrollment ID is required'],
-      unique: true,
       trim: true,
       uppercase: true,
     },
@@ -44,9 +48,10 @@ const studentSchema = new mongoose.Schema(
   }
 );
 
-// classId and isDeleted indexes (enrollmentId unique index handled by field definition)
-studentSchema.index({ classId: 1 });
-studentSchema.index({ isDeleted: 1 });
+// Compound unique: enrollmentId must be unique within a school
+studentSchema.index({ schoolId: 1, enrollmentId: 1 }, { unique: true });
+studentSchema.index({ schoolId: 1, classId: 1 });
+studentSchema.index({ schoolId: 1, isDeleted: 1 });
 
 const Student = mongoose.model('Student', studentSchema);
 

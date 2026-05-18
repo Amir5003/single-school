@@ -31,7 +31,24 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Verify alignment with all **eight** core principles:
+
+| Principle | Addressed? | Notes |
+|-----------|-----------|-------|
+| I. Code Quality | [ ] | Modular architecture, naming, REST adherence |
+| II. Testing Standards | [ ] | >70% coverage, independent test design |
+| III. User Experience Consistency | [ ] | Consistent layout, feedback, navigation |
+| IV. Performance Requirements | [ ] | <500ms responses, pagination, indexing |
+| V. Security | [ ] | JWT+httpOnly, 4-tier RBAC, cross-tenant isolation, input sanitization |
+| VI. Scalability | [ ] | schoolId compound indexes, stateless, soft deletes |
+| VII. UI Animation & Modern Design | [ ] | Framer Motion, mobile-first, prefers-reduced-motion |
+| VIII. Multi-Tenancy & School Isolation | [ ] | schoolScope middleware, slug→schoolId, super-admin tier, cross-tenant leakage tests |
+
+**Multi-Tenancy Gate** (for any feature touching tenant-scoped data):
+- [ ] `schoolId` added to all new tenant-scoped models
+- [ ] `schoolScope` middleware applied to all new authenticated routes
+- [ ] Cross-tenant isolation assertion included in integration tests
+- [ ] Public routes use `slugToSchool` middleware (not raw schoolId in URL)
 
 ## Project Structure
 

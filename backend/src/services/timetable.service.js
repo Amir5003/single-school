@@ -25,7 +25,7 @@ const populateEntry = (query) =>
  * @param {string} [excludeId] _id to exclude (for update conflict re-check)
  */
 const checkConflicts = async (data, excludeId = null) => {
-  const { classId, teacherId, day, startTime, endTime } = data;
+  const { classId, teacherId, day, startTime, endTime, schoolId } = data;
 
   const overlapFilter = {
     day,
@@ -38,8 +38,8 @@ const checkConflicts = async (data, excludeId = null) => {
   }
 
   const [classConflict, teacherConflict] = await Promise.all([
-    Timetable.findOne({ classId, ...overlapFilter }),
-    Timetable.findOne({ teacherId, ...overlapFilter }),
+    Timetable.findOne({ schoolId, classId, ...overlapFilter }),
+    Timetable.findOne({ schoolId, teacherId, ...overlapFilter }),
   ]);
 
   if (classConflict) {
@@ -64,9 +64,10 @@ const checkConflicts = async (data, excludeId = null) => {
  * @param {{ classId, teacherId, subject, day, startTime, endTime }} data
  * @returns {Promise<Timetable>}
  */
-const createEntry = async (data) => {
-  await checkConflicts(data);
-  const entry = await Timetable.create(data);
+const createEntry = async (data, schoolId) => {
+  const entryData = { ...data, schoolId };
+  await checkConflicts(entryData);
+  const entry = await Timetable.create(entryData);
   return populateEntry(Timetable.findById(entry._id));
 };
 
@@ -76,11 +77,11 @@ const createEntry = async (data) => {
  * @param {string} classId
  * @returns {Promise<Timetable[]>}
  */
-const listByClass = async (classId) => {
+const listByClass = async (classId, schoolId) => {
   const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const entries = await populateEntry(
-    Timetable.find({ classId })
+    Timetable.find({ schoolId, classId })
   );
 
   // Sort by day order then startTime (string comparison is safe for HH:MM)
@@ -99,14 +100,15 @@ const listByClass = async (classId) => {
  * @param {string} id   Timetable document _id
  * @param {object} data Partial fields to update
  */
-const updateEntry = async (id, data) => {
-  const existing = await Timetable.findById(id);
+const updateEntry = async (id, data, schoolId) => {
+  const existing = await Timetable.findOne({ _id: id, schoolId });
   if (!existing) {
     throw new ApiError(404, 'Timetable entry not found');
   }
 
   // Merge with existing values so conflict check has a complete picture
   const merged = {
+    schoolId,
     classId:    data.classId   ?? existing.classId,
     teacherId:  data.teacherId ?? existing.teacherId,
     day:        data.day       ?? existing.day,
@@ -131,12 +133,12 @@ const updateEntry = async (id, data) => {
  *
  * @param {string} id
  */
-const deleteEntry = async (id) => {
-  const entry = await Timetable.findById(id);
+const deleteEntry = async (id, schoolId) => {
+  const entry = await Timetable.findOne({ _id: id, schoolId });
   if (!entry) {
     throw new ApiError(404, 'Timetable entry not found');
   }
-  await Timetable.findByIdAndDelete(id);
+  await Timetable.deleteOne({ _id: id, schoolId });
 };
 
 module.exports = { createEntry, listByClass, updateEntry, deleteEntry };

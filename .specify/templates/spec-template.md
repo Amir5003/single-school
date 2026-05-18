@@ -100,6 +100,22 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+### Multi-Tenancy Scope *(mandatory for any feature touching school data)*
+
+<!--
+  Every feature that reads or writes tenant-scoped data MUST answer:
+  - Is this feature scoped to a single school or platform-wide?
+  - Which collections does it read/write? Do they carry schoolId?
+  - Is access restricted by the schoolScope middleware (authenticated routes)?
+  - Does this feature expose anything at a public URL under /schools/:schoolSlug/?
+  - Does this feature require super-admin access?
+-->
+
+- **Tenant Scope**: [Single-school (schoolId from JWT) | Platform-wide (super-admin only) | Public (slug-resolved)]
+- **schoolId Required**: [Yes — all data reads/writes MUST include schoolId filter | No — public or platform-wide]
+- **Public URL Shape**: [/schools/:schoolSlug/... | N/A]
+- **Cross-Tenant Risk**: [List any edge cases where data from another school could inadvertently be included]
+
 ## Success Criteria *(mandatory)*
 
 <!--
