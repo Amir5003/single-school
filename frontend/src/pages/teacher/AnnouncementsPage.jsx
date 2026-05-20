@@ -102,8 +102,8 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <Layout>
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+    <Layout role="teacher">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-gray-800">Announcements</h1>

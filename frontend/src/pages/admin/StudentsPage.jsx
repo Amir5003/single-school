@@ -25,8 +25,7 @@ export default function StudentsPage() {
   // ── Table state ─────────────────────────────────────────────────────────────
   const [students, setStudents] = useState([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState('');
+  const [totalPages, setTotalPages] = useState(1);  const [totalStudents, setTotalStudents] = useState(0);  const [search, setSearch] = useState('');
   const [tableLoading, setTableLoading] = useState(false);
 
   // ── Form modal state ─────────────────────────────────────────────────────────
@@ -62,6 +61,7 @@ export default function StudentsPage() {
         setStudents(result.data.students || []);
         setTotalPages(result.data.totalPages || 1);
         setPage(result.data.page || 1);
+        setTotalStudents(result.data.total ?? 0);
       } catch {
         showStatus('Failed to load students. Please try again.', 'error');
       } finally {
@@ -292,6 +292,7 @@ export default function StudentsPage() {
                 initialData={editStudent}
                 onSubmit={handleFormSubmit}
                 loading={formLoading}
+                nextSeq={editStudent ? undefined : totalStudents + 1}
                 apiErrors={
                   // Don't pass _form key into individual field errors
                   Object.fromEntries(

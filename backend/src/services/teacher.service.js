@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const User = require('../models/User.model');
 const Teacher = require('../models/Teacher.model');
 const ClassTeacher = require('../models/ClassTeacher.model');
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 
 const MONGO_DUPLICATE_KEY = 11000;
 
@@ -11,48 +13,74 @@ const MONGO_DUPLICATE_KEY = 11000;
 /**
  * Create a teacher User + Teacher profile in a single transaction.
  *
- * @param {{ name, email, password, phone, employeeId }} data
+ * @param {{ name, email, phone, employeeId? }} data
  * @param {string} schoolId  Injected from req.school._id
  * @returns {Promise<{ user, teacher }>}
  */
 const createTeacher = async (data, schoolId) => {
-  const { name, email, password, phone, employeeId } = data;
-  const normalizedId = (employeeId || '').toUpperCase();
+  const { name, email, phone, employeeId } = data;
+
+  // Auto-generate employeeId if not provided
+  let resolvedId;
+  if (employeeId && employeeId.trim()) {
+    resolvedId = employeeId.trim().toUpperCase();
+  } else {
+    const count = await Teacher.countDocuments({ schoolId });
+    resolvedId = `TCH-${String(count + 1).padStart(3, '0')}`;
+    // Ensure uniqueness in case of gaps (deleted teachers)
+    let suffix = count + 1;
+    while (await Teacher.exists({ schoolId, employeeId: resolvedId })) {
+      suffix += 1;
+      resolvedId = `TCH-${String(suffix).padStart(3, '0')}`;
+    }
+  }
 
   // Pre-flight duplicate checks
   const [dupEmployee, dupEmail] = await Promise.all([
-    Teacher.findOne({ schoolId, employeeId: normalizedId }),
+    Teacher.findOne({ schoolId, employeeId: resolvedId }),
     User.findOne({ email }),
   ]);
 
   if (dupEmployee) {
-    throw new ApiError(409, `Employee ID '${normalizedId}' is already in use`);
+    throw new ApiError(409, `Employee ID '${resolvedId}' is already in use`);
   }
   if (dupEmail) {
     throw new ApiError(409, 'An account with this email already exists');
   }
+
+  // Always generate a secure temp password — never accept one from the admin
+  const tempPassword = crypto.randomBytes(8).toString('hex');
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const [user] = await User.create(
-      [{ name, email, password, role: 'teacher', phone: phone || null, schoolId }],
+      [{ name, email, password: tempPassword, role: 'teacher', phone: phone || null, schoolId, mustChangePassword: true }],
       { session }
     );
     const [teacher] = await Teacher.create(
-      [{ schoolId, userId: user._id, employeeId: normalizedId }],
+      [{ schoolId, userId: user._id, employeeId: resolvedId }],
       { session }
     );
 
     await session.commitTransaction();
+
+    // Fire-and-forget email — never block the response
+    setImmediate(() => {
+      const emailService = require('./email.service');
+      emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
+        logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
+      });
+    });
+
     return { user, teacher };
   } catch (err) {
     await session.abortTransaction();
 
     if (err.code === MONGO_DUPLICATE_KEY) {
       const field = Object.keys(err.keyPattern || {})[0];
-      const label = field === 'employeeId' ? `Employee ID '${normalizedId}'` : 'email';
+      const label = field === 'employeeId' ? `Employee ID '${resolvedId}'` : 'email';
       throw new ApiError(409, `${label} is already in use`);
     }
     throw err;

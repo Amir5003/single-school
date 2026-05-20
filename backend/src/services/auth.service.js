@@ -82,6 +82,7 @@ const login = async (email, password) => {
   // Populate school so the frontend can obtain the slug for URL routing
   await user.populate('schoolId', 'slug name');
 
+  // mustChangePassword is included via toJSON (field exists on model now)
   return { user, accessToken, refreshToken };
 };
 

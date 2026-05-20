@@ -12,6 +12,14 @@ const {
 const feeController = require('../controllers/fee.controller');
 const homeworkController = require('../controllers/homework.controller');
 const notificationController = require('../controllers/notification.controller');
+const examService = require('../services/exam.service');
+const resultService = require('../services/result.service');
+const ApiResponse = require('../utils/ApiResponse');
+
+const ApiError = require('../utils/ApiError');
+const passwordResetService = require('../services/passwordReset.service');
+const { body } = require('express-validator');
+const validate = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -27,5 +35,58 @@ router.get('/fees', feeController.getMyFees);
 router.get('/homework', homeworkController.getStudentHomework);
 router.get('/notifications', notificationController.listNotifications);
 router.patch('/notifications/:id/read', notificationController.markRead);
+
+// ── Exams & Results ───────────────────────────────────────────────────────────
+router.get('/exams/years', async (req, res, next) => {
+  try {
+    const years = await examService.getDistinctYears(req.school._id);
+    res.json(new ApiResponse(200, { years }, 'Years retrieved'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/exams', async (req, res, next) => {
+  try {
+    const Student = require('../models/Student.model');
+    const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();
+    if (!student) return next(new ApiError(404, 'Student profile not found'));
+    const exams = await examService.getExamsForStudent(req.school._id, student._id, req.query.year);
+    res.json(new ApiResponse(200, { exams }, 'Exams retrieved'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/results', async (req, res, next) => {
+  try {
+    const Student = require('../models/Student.model');
+    const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();
+    if (!student) return next(new ApiError(404, 'Student profile not found'));
+    const result = await resultService.getStudentResult(req.school._id, student._id, req.query.examId);
+    res.json(new ApiResponse(200, result, 'Result retrieved'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Password ──────────────────────────────────────────────────────────────────
+router.put(
+  '/password',
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      await passwordResetService.changePassword(req.user._id, currentPassword, newPassword);
+      res.json(new ApiResponse(200, null, 'Password changed successfully'));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 module.exports = router;

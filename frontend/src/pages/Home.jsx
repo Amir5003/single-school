@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
+import { useEffect } from 'react';
 import { selectUser, selectRole, selectIsAuthenticated, selectSchoolSlug, clearCredentials } from '../redux/slices/authSlice';
 import { logoutUser } from '../api/auth.api';
 
@@ -49,6 +50,18 @@ export default function Home() {
 
   const dashboardPath = getDashboardPath(role, schoolSlug);
 
+  // T050 — restore school context from localStorage on mount
+  const lastSlug = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('lastSchoolSlug')
+    : null;
+
+  useEffect(() => {
+    if (isAuthenticated && lastSlug) {
+      navigate(getDashboardPath(role, lastSlug), { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogout = async () => {
     try { await logoutUser(); } catch { /* cookie cleared regardless */ }
     dispatch(clearCredentials());
@@ -93,6 +106,14 @@ export default function Home() {
               </>
             ) : (
               <>
+                {lastSlug && (
+                  <Link
+                    to={`/schools/${lastSlug}`}
+                    className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                  >
+                    Return to school portal
+                  </Link>
+                )}
                 <Link
                   to="/register"
                   className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"

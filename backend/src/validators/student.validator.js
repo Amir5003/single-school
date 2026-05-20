@@ -21,12 +21,6 @@ const createStudentValidator = [
     .withMessage('Valid email is required')
     .normalizeEmail(),
 
-  body('password')
-    .matches(PASSWORD_REGEX)
-    .withMessage(
-      'Password must be at least 8 characters and include 1 uppercase letter, 1 digit, and 1 special character (!@#$%^&*)'
-    ),
-
   body('enrollmentId')
     .trim()
     .notEmpty()

@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { loginUser } from '../api/auth.api';
-import { setCredentials } from '../redux/slices/authSlice';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import LoginForm from '../components/common/LoginForm';
+import { selectRole, selectSchoolSlug } from '../redux/slices/authSlice';
 
 function getDashboardPath(role, schoolSlug) {
   if (role === 'super-admin') return '/platform/schools';
@@ -17,46 +16,14 @@ function getDashboardPath(role, schoolSlug) {
 
 export default function Login() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const location = useLocation();
+  // If redirected here by ProtectedRoute, restore original destination
+  const from = location.state?.from?.pathname ?? null;
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setFieldErrors({});
-    setLoading(true);
-
-    try {
-      const data = await loginUser({ email, password });
-      const { user } = data.data;
-      // schoolId is populated on the backend: { _id, slug, name }
-      const schoolSlug = user.schoolId?.slug ?? null;
-      const schoolId   = user.schoolId?._id  ?? user.schoolId ?? null;
-      dispatch(setCredentials({ user, role: user.role, schoolSlug, schoolId }));
-      navigate(getDashboardPath(user.role, schoolSlug));
-    } catch (err) {
-      const status = err.response?.status;
-      if (status === 422) {
-        const mapped = {};
-        err.response.data.errors?.forEach(({ field, msg }) => {
-          mapped[field] = msg;
-        });
-        setFieldErrors(mapped);
-      } else if (status === 401) {
-        setError('Invalid email or password. Please try again.');
-      } else if (status === 403) {
-        setError(err.response?.data?.message || 'Account pending admin approval.');
-      } else {
-        setError('Something went wrong. Please try again later.');
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleSuccess = (user) => {
+    const slug = user.schoolId?.slug ?? null;
+    const dest = from ?? getDashboardPath(user.role, slug);
+    navigate(dest, { replace: true });
   };
 
   return (
@@ -67,65 +34,7 @@ export default function Login() {
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate className="space-y-5">
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition ${
-                fieldErrors.email ? 'border-red-400' : 'border-gray-300'
-              }`}
-              placeholder="you@school.com"
-            />
-            {fieldErrors.email && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition ${
-                fieldErrors.password ? 'border-red-400' : 'border-gray-300'
-              }`}
-              placeholder="••••••••"
-            />
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold py-2 text-sm transition"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+        <LoginForm onSuccess={handleSuccess} />
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Don&apos;t have an account?{' '}

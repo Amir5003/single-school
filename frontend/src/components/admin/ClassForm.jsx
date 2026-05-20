@@ -1,5 +1,12 @@
 import { useState } from 'react';
 
+function getDefaultAcademicYear() {
+  const now = new Date();
+  const year = now.getFullYear();
+  // New academic year starts in June
+  return now.getMonth() >= 5 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+}
+
 /**
  * Controlled form for creating or editing a class.
  *
@@ -19,6 +26,7 @@ export default function ClassForm({
     name: initialData?.name ?? '',
     grade: initialData?.grade ?? '',
     section: initialData?.section ?? '',
+    academicYear: initialData?.academicYear ?? getDefaultAcademicYear(),
   });
 
   const [localErrors, setLocalErrors] = useState({});
@@ -33,6 +41,7 @@ export default function ClassForm({
     if (!form.grade.trim()) errs.grade = 'Grade is required';
     if (!form.section.trim()) errs.section = 'Section is required';
     else if (form.section.trim().length > 5) errs.section = 'Section cannot exceed 5 characters';
+    if (!form.academicYear.trim()) errs.academicYear = 'Academic year is required';
     setLocalErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -44,6 +53,7 @@ export default function ClassForm({
       name: form.name.trim(),
       grade: form.grade.trim(),
       section: form.section.trim().toUpperCase(),
+      academicYear: form.academicYear.trim(),
     });
   };
 
@@ -93,6 +103,21 @@ export default function ClassForm({
           className={inputCls(allErrors.section)}
         />
         {allErrors.section && <p className="text-xs text-red-600 mt-1">{allErrors.section}</p>}
+      </div>
+
+      {/* Academic Year */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Academic Year <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={form.academicYear}
+          onChange={set('academicYear')}
+          placeholder="e.g. 2025-2026"
+          className={inputCls(allErrors.academicYear)}
+        />
+        {allErrors.academicYear && <p className="text-xs text-red-600 mt-1">{allErrors.academicYear}</p>}
       </div>
 
       <button

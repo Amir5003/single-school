@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../../components/common/Layout';
 import AnnouncementList from '../../components/student/AnnouncementCard';
+import EmptyState from '../../components/common/EmptyState';
 import { getStudentAnnouncements } from '../../api/student.api';
 import useApi from '../../hooks/useApi';
 import { fadeInUp } from '../../utils/animationVariants';
@@ -12,6 +13,8 @@ export default function StudentAnnouncementsPage() {
   useEffect(() => {
     execute();
   }, [execute]);
+
+  const announcements = data?.data?.announcements ?? [];
 
   return (
     <Layout role="student">
@@ -29,8 +32,14 @@ export default function StudentAnnouncementsPage() {
         {error && (
           <p className="text-red-500 text-sm">{error}</p>
         )}
-        {!loading && !error && (
-          <AnnouncementList announcements={data?.data ?? []} />
+        {!loading && !error && announcements.length === 0 && (
+          <EmptyState
+            title="No announcements yet"
+            message="Your teachers will post updates and notices here."
+          />
+        )}
+        {!loading && !error && announcements.length > 0 && (
+          <AnnouncementList announcements={announcements} />
         )}
       </motion.div>
     </Layout>

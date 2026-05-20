@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 
@@ -8,12 +9,18 @@ import Sidebar from './Sidebar';
  * @param {React.ReactNode} props.children
  */
 export default function Layout({ role, children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar role={role} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <Sidebar
+          role={role}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>

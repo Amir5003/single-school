@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { motion } from 'framer-motion';
 import { selectSchoolSlug } from '../../redux/slices/authSlice';
+import { selectSchoolBranding } from '../../redux/slices/schoolSlice';
 import Layout from '../../components/common/Layout';
 import { getTeacherClasses } from '../../api/teacher.api';
 import HomeworkForm from '../../components/teacher/HomeworkForm';
+import useAuth from '../../hooks/useAuth';
+import { fadeInUp } from '../../utils/animationVariants';
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
+}
 
 // ── Class card ────────────────────────────────────────────────────────────────
 
@@ -53,8 +64,10 @@ function ClassCard({ assignment, onAttendance, onMarks }) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function TeacherDashboard() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const schoolSlug = useSelector(selectSchoolSlug);
+  const branding = useSelector(selectSchoolBranding);
   const base = schoolSlug ? `/schools/${schoolSlug}` : '';
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +90,22 @@ export default function TeacherDashboard() {
 
   return (
     <Layout role="teacher">
+      {/* Greeting banner */}
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="border-l-4 pl-4 py-2 mb-8"
+        style={{ borderColor: branding?.primaryColor ?? '#4f46e5' }}
+      >
+        <h1 className="text-2xl font-bold text-gray-900">
+          Good {getTimeOfDay()}, {(user?.name ?? 'Teacher').split(' ')[0]} 👋
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
+          {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}
+        </p>
+      </motion.div>
+
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-800">My Classes</h2>
         <p className="text-sm text-gray-500 mt-0.5">Select a class to mark attendance or enter marks.</p>
@@ -109,7 +138,7 @@ export default function TeacherDashboard() {
       )}
 
       {/* Homework assignment */}
-      <div className="mt-10 max-w-lg">
+      <div className="mt-10">
         <HomeworkForm onCreated={() => {}} />
       </div>
     </Layout>

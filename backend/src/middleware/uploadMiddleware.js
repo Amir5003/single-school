@@ -19,19 +19,30 @@ const uploadLogo = multer({
 }).single('logo');
 
 // ── Homework attachments (up to 5, pdf + images) ─────────────────────────────
+// Falls back to a no-op (memory, no storage) when Cloudinary is not configured.
 
-const homeworkStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'homework-attachments',
-    allowed_formats: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-    resource_type: 'auto',
-  },
-});
+let uploadHomeworkAttachment;
 
-const uploadHomeworkAttachment = multer({
-  storage: homeworkStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB per file
-}).array('attachments', 5);
+if (
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+) {
+  const homeworkStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder: 'homework-attachments',
+      allowed_formats: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      resource_type: 'auto',
+    },
+  });
+  uploadHomeworkAttachment = multer({
+    storage: homeworkStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+  }).array('attachments', 5);
+} else {
+  // No Cloudinary configured — accept the field but keep nothing
+  uploadHomeworkAttachment = multer().array('attachments', 5);
+}
 
 module.exports = { uploadLogo, uploadHomeworkAttachment };

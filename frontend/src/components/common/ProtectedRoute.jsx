@@ -1,21 +1,16 @@
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { selectIsAuthenticated, selectRole, selectSchoolSlug } from '../../redux/slices/authSlice';
 
-/**
- * Wraps a route that requires authentication and optionally a specific role.
- *
- * @param {object}  props
- * @param {React.ReactNode} props.children   - Content to render when authorized
- * @param {string}  [props.allowedRole]      - If set, only this role is permitted
- */
 export default function ProtectedRoute({ children, allowedRole }) {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const role = useSelector(selectRole);
   const schoolSlug = useSelector(selectSchoolSlug);
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Replace so the protected page is not reachable via back button
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (allowedRole && role !== allowedRole) {
