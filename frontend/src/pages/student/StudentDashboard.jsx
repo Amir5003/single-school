@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import Layout from '../../components/common/Layout';
 import { getProfile, getAttendance, getMarks, getStudentAnnouncements } from '../../api/student.api';
 import useApi from '../../hooks/useApi';
@@ -12,15 +13,26 @@ import HomeworkCard from '../../components/student/HomeworkCard';
 import NotificationsPanel from '../../components/student/NotificationsPanel';
 import { getStudentFees } from '../../api/fee.api';
 import { getStudentHomework } from '../../api/homework.api';
+import { selectSchoolBranding } from '../../redux/slices/schoolSlice';
+import { selectSchoolName } from '../../redux/slices/schoolSlice';
+import { selectSchoolSlug } from '../../redux/slices/authSlice';
 
-function SummaryCard({ label, value, sub, linkTo, colour }) {
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
+}
+
+function SummaryCard({ label, value, sub, linkTo }) {
+  const branding = useSelector(selectSchoolBranding);
   const inner = (
     <motion.div
       variants={fadeInUp}
       className={`backdrop-blur-sm bg-white/70 rounded-2xl shadow-lg border border-white/20 p-5 flex flex-col gap-1 hover:shadow-xl transition-shadow ${linkTo ? 'cursor-pointer' : ''}`}
     >
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className={`text-3xl font-extrabold ${colour ?? 'text-gray-900'}`}>{value}</p>
+      <p className="text-3xl font-extrabold" style={{ color: branding?.primaryColor ?? '#4f46e5' }}>{value}</p>
       {sub && <p className="text-xs text-gray-500">{sub}</p>}
     </motion.div>
   );
@@ -30,6 +42,9 @@ function SummaryCard({ label, value, sub, linkTo, colour }) {
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const branding = useSelector(selectSchoolBranding);
+  const schoolSlug = useSelector(selectSchoolSlug);
+  const base = schoolSlug ? `/schools/${schoolSlug}` : '';
 
   const profile = useApi(getProfile);
   const attendance = useApi(getAttendance);
@@ -50,7 +65,7 @@ export default function StudentDashboard() {
 
   const attendancePct = attendance.data?.data?.percentage ?? '—';
   const latestMark = marks.data?.data?.marks?.[0];
-  const announcementCount = announcements.data?.data?.length ?? 0;
+  const announcementCount = announcements.data?.data?.announcements?.length ?? 0;
 
   const staggerProps = getVariants(staggerContainer);
 
@@ -62,17 +77,20 @@ export default function StudentDashboard() {
         animate="visible"
         className="max-w-4xl"
       >
-        {/* Header */}
-        <div className="mb-8">
+        {/* Greeting banner */}
+        <motion.div
+          variants={fadeInUp}
+          className="border-l-4 pl-4 py-2 mb-8"
+          style={{ borderColor: branding?.primaryColor ?? '#4f46e5' }}
+        >
           <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {profile.data?.data?.name ?? user?.name ?? 'Student'} 👋
+            Good {getTimeOfDay()}, {(profile.data?.data?.name ?? user?.name ?? 'Student').split(' ')[0]} 👋
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {profile.data?.data?.classId?.name
-              ? `Class: ${profile.data.data.classId.name}`
-              : "Here's your academic overview"}
+            {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}
+            {profile.data?.data?.classId?.name ? ` · Class: ${profile.data.data.classId.name}` : ''}
           </p>
-        </div>
+        </motion.div>
 
         {/* Summary cards */}
         <motion.div
@@ -84,9 +102,8 @@ export default function StudentDashboard() {
             label="Attendance"
             value={attendancePct !== '—' ? `${attendancePct}%` : '—'}
             sub="Overall percentage"
-            linkTo="/student/attendance"
-            colour="text-indigo-700"
-          />
+            linkTo={`${base}/student/attendance`}
+            />
           <SummaryCard
             label="Latest Score"
             value={
@@ -95,33 +112,30 @@ export default function StudentDashboard() {
                 : '—'
             }
             sub={latestMark ? `${latestMark.subject} · ${latestMark.examType}` : 'No marks yet'}
-            linkTo="/student/marks"
-            colour="text-emerald-700"
+            linkTo={`${base}/student/marks`}
           />
           <SummaryCard
             label="Timetable"
             value="View"
             sub="Your weekly schedule"
-            linkTo="/student/timetable"
-            colour="text-sky-700"
+            linkTo={`${base}/student/timetable`}
           />
           <SummaryCard
             label="Announcements"
             value={announcementCount}
             sub="Active announcements"
-            linkTo="/student/announcements"
-            colour="text-amber-700"
+            linkTo={`${base}/student/announcements`}
           />
         </motion.div>
 
         {/* Quick nav */}
         <motion.div variants={fadeInUp} className="flex flex-wrap gap-3">
           {[
-            { label: 'My Profile', to: '/student/profile' },
-            { label: 'Timetable', to: '/student/timetable' },
-            { label: 'Attendance', to: '/student/attendance' },
-            { label: 'Marks', to: '/student/marks' },
-            { label: 'Announcements', to: '/student/announcements' },
+            { label: 'My Profile', to: `${base}/student/profile` },
+            { label: 'Timetable', to: `${base}/student/timetable` },
+            { label: 'Attendance', to: `${base}/student/attendance` },
+            { label: 'Marks', to: `${base}/student/marks` },
+            { label: 'Announcements', to: `${base}/student/announcements` },
           ].map(({ label, to }) => (
             <Link
               key={to}

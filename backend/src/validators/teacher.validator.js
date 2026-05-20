@@ -7,6 +7,7 @@ const EMPLOYEE_ID_REGEX = /^[A-Z0-9-]+$/;
 
 /**
  * Validators for POST /admin/teachers (create).
+ * employeeId is now optional — backend auto-generates if omitted.
  */
 const createTeacherValidator = [
   body('name').trim().notEmpty().withMessage('Name is required'),
@@ -16,16 +17,9 @@ const createTeacherValidator = [
     .withMessage('Valid email is required')
     .normalizeEmail(),
 
-  body('password')
-    .matches(PASSWORD_REGEX)
-    .withMessage(
-      'Password must be at least 8 characters and include 1 uppercase letter, 1 digit, and 1 special character (!@#$%^&*)'
-    ),
-
   body('employeeId')
+    .optional({ checkFalsy: true })
     .trim()
-    .notEmpty()
-    .withMessage('Employee ID is required')
     .matches(EMPLOYEE_ID_REGEX)
     .withMessage('Employee ID must contain only uppercase letters, digits, and hyphens'),
 

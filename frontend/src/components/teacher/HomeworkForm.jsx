@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { createHomework } from '../../api/homework.api';
-import { getClasses } from '../../api/admin.api';
+import { getTeacherClasses } from '../../api/teacher.api';
 
 const HomeworkForm = ({ onCreated }) => {
   const [classes, setClasses] = useState([]);
   const [form, setForm] = useState({ classId: '', title: '', description: '', dueDate: '' });
-  const [files, setFiles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getClasses()
+    // Use the teacher's own classes — not the admin endpoint (which would 403)
+    getTeacherClasses()
       .then((res) => setClasses(res.data?.classes ?? []))
       .catch(() => {});
   }, []);
@@ -18,22 +18,10 @@ const HomeworkForm = ({ onCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (files.length > 5) {
-      setError('Maximum 5 attachments allowed.');
-      return;
-    }
-    const fd = new FormData();
-    fd.append('classId', form.classId);
-    fd.append('title', form.title);
-    fd.append('description', form.description);
-    fd.append('dueDate', form.dueDate);
-    files.forEach((f) => fd.append('attachments', f));
-
     setLoading(true);
     try {
-      const res = await createHomework(fd);
+      const res = await createHomework(form);
       setForm({ classId: '', title: '', description: '', dueDate: '' });
-      setFiles([]);
       onCreated?.(res.data?.homework);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to create homework.');
@@ -43,85 +31,71 @@ const HomeworkForm = ({ onCreated }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4 space-y-3">
-      <h3 className="font-semibold text-gray-800 text-lg">New Homework</h3>
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+      <h3 className="font-semibold text-gray-800 text-base">New Homework</h3>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      <div>
-        <label className="block text-sm text-gray-600 mb-1">Class</label>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-gray-600">Class</label>
         <select
           value={form.classId}
           onChange={(e) => setForm({ ...form, classId: e.target.value })}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
           required
         >
           <option value="">Select a class…</option>
-          {classes.map((cls) => (
-            <option key={cls._id} value={cls._id}>{cls.name}</option>
+          {classes.map((c) => (
+            <option key={c.classId?._id} value={c.classId?._id}>
+              {c.classId?.name} — {c.subject}
+            </option>
           ))}
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm text-gray-600 mb-1">Title</label>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-gray-600">Title</label>
         <input
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
           placeholder="Homework title"
           maxLength={200}
           required
         />
       </div>
 
-      <div>
-        <label className="block text-sm text-gray-600 mb-1">Description (optional)</label>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-gray-600">Description <span className="text-gray-400">(optional)</span></label>
         <textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
           rows={3}
           maxLength={2000}
         />
       </div>
 
-      <div>
-        <label className="block text-sm text-gray-600 mb-1">Due Date</label>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-gray-600">Due Date</label>
         <input
           type="date"
           value={form.dueDate}
           onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
           required
         />
       </div>
 
-      <div>
-        <label className="block text-sm text-gray-600 mb-1">
-          Attachments <span className="text-gray-400">(max 5 files)</span>
-        </label>
-        <input
-          type="file"
-          multiple
-          accept="image/*,application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-          onChange={(e) => setFiles(Array.from(e.target.files).slice(0, 5))}
-          className="text-sm"
-        />
-        {files.length > 0 && (
-          <ul className="mt-1 text-xs text-gray-500 list-disc list-inside">
-            {files.map((f, i) => <li key={i}>{f.name}</li>)}
-          </ul>
-        )}
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-xl bg-indigo-600 text-white text-sm font-semibold px-6 py-2.5 hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Uploading…' : 'Assign Homework'}
+        </button>
       </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-[var(--school-primary,#4F46E5)] text-white rounded-lg px-5 py-2 text-sm hover:opacity-90 disabled:opacity-50"
-      >
-        {loading ? 'Uploading…' : 'Assign Homework'}
-      </button>
     </form>
   );
 };

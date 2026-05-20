@@ -78,6 +78,14 @@ export const approveUser = (id) =>
 export const rejectUser = (id) =>
   axiosInstance.put(`/admin/users/${id}/reject`).then((r) => r.data);
 
+// ── School Settings ───────────────────────────────────────────────────────────
+
+export const getSchoolProfile = (slug) =>
+  axiosInstance.get(`/public/schools/${slug}/config`).then((r) => r.data);
+
+export const updateSchoolBranding = (data) =>
+  axiosInstance.patch('/admin/school/branding', data).then((r) => r.data);
+
 // ── Branding ──────────────────────────────────────────────────────────────────
 
 export const updateBranding = (data) =>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const PASSWORD_REGEX = /(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}/;
 const ENROLLMENT_REGEX = /^[A-Z0-9-]+$/;
@@ -24,6 +24,7 @@ export default function StudentForm({
   onSubmit,
   loading = false,
   apiErrors = {},
+  nextSeq = 1,
 }) {
   const isEdit = !!initialData;
 
@@ -32,18 +33,30 @@ export default function StudentForm({
     email: initialData?.userId?.email ?? '',
     password: '',
     phone: initialData?.userId?.phone ?? '',
-    enrollmentId: initialData?.enrollmentId ?? '',
+    enrollmentId: initialData?.enrollmentId ?? (() => {
+      const yy = String(new Date().getFullYear()).slice(-2);
+      return `${yy}${String(nextSeq).padStart(3, '0')}`;
+    })(),
     dateOfBirth: toDateInputValue(initialData?.dateOfBirth),
     address: initialData?.address ?? '',
   });
 
   const [localErrors, setLocalErrors] = useState({});
+  const [gradeForId, setGradeForId] = useState('');
 
   // Merge local client-side errors with API-returned 422 errors
   const allErrors = { ...localErrors, ...apiErrors };
 
   const set = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  // Auto-generate enrollment ID in create mode when grade or nextSeq changes
+  useEffect(() => {
+    if (isEdit) return;
+    const yy = String(new Date().getFullYear()).slice(-2);
+    const gradeCode = gradeForId.trim() ? `G${gradeForId.trim()}` : '';
+    setForm((prev) => ({ ...prev, enrollmentId: `${yy}${gradeCode}${String(nextSeq).padStart(3, '0')}` }));
+  }, [gradeForId, nextSeq, isEdit]);
 
   const validate = () => {
     const errs = {};
@@ -88,7 +101,7 @@ export default function StudentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">
       {/* Name */}
       <Field
         label="Full Name"
@@ -111,6 +124,7 @@ export default function StudentForm({
           value={form.email}
           onChange={set('email')}
           placeholder="student@school.com"
+          autoComplete="off"
           readOnly={isEdit}
           disabled={isEdit}
           className={isEdit ? inputCls() + ' bg-gray-50 cursor-not-allowed' : inputCls(allErrors.email)}
@@ -145,6 +159,20 @@ export default function StudentForm({
           className={inputCls(allErrors.phone)}
         />
       </Field>
+
+      {/* Grade — create only, drives auto-generated enrollment ID */}
+      {!isEdit && (
+        <Field label="Grade (for Enrollment ID)">
+          <input
+            type="text"
+            value={gradeForId}
+            onChange={(e) => setGradeForId(e.target.value)}
+            placeholder="e.g. 5  →  auto-fills ID below"
+            className={inputCls()}
+          />
+          <p className="text-xs text-gray-400 mt-1">Enter grade to auto-build ID. You can still edit the ID directly.</p>
+        </Field>
+      )}
 
       {/* Enrollment ID */}
       <Field label="Enrollment ID" error={allErrors.enrollmentId} required={!isEdit}>

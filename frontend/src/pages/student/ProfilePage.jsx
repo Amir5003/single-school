@@ -30,7 +30,7 @@ export default function ProfilePage() {
           <p className="text-red-500 text-sm">{error}</p>
         )}
         {!loading && !error && data && (
-          <ProfileCard profile={data.data} />
+          <ProfileCard profile={data.data?.student} />
         )}
       </motion.div>
     </Layout>

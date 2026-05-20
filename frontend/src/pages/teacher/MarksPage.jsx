@@ -19,6 +19,7 @@ export default function MarksPage() {
   const [classId, setClassId] = useState(searchParams.get('classId') ?? '');
   const [subject, setSubject] = useState('');
   const [examType, setExamType] = useState('final');
+  const [maxMarks, setMaxMarks] = useState(100);
 
   const [students, setStudents] = useState([]);
   const [marks, setMarks] = useState({});     // { [studentId]: string }
@@ -97,13 +98,14 @@ export default function MarksPage() {
       return;
     }
 
+    const mm = Number(maxMarks) || 100;
     // Validate all
     const invalid = entries.filter(([, v]) => {
       const n = Number(v);
-      return isNaN(n) || n < 0 || n > 100;
+      return isNaN(n) || n < 0 || n > mm;
     });
     if (invalid.length > 0) {
-      showStatus(`${invalid.length} mark(s) out of range (0–100). Please fix before saving.`, 'error');
+      showStatus(`${invalid.length} mark(s) out of range (0–${mm}). Please fix before saving.`, 'error');
       return;
     }
 
@@ -119,6 +121,7 @@ export default function MarksPage() {
           subject: subject.trim(),
           examType,
           marksObtained: Number(marksObtained),
+          maxMarks: Number(maxMarks) || 100,
         })
           .then(() => { successCount += 1; })
           .catch(() => { errorCount += 1; })
@@ -140,8 +143,8 @@ export default function MarksPage() {
   const selectedClass = classes.find((c) => c.classId?._id === classId);
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <Layout role="teacher">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-gray-800">Enter Marks</h1>
@@ -209,6 +212,19 @@ export default function MarksPage() {
                 ))}
               </select>
             </div>
+
+            {/* Max Marks */}
+            <div className="flex flex-col gap-1 min-w-[100px]">
+              <label className="text-xs font-medium text-gray-600">Max Marks (MM)</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={maxMarks}
+                onChange={(e) => setMaxMarks(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full"
+              />
+            </div>
           </div>
 
           {/* Table */}
@@ -236,6 +252,7 @@ export default function MarksPage() {
                 <MarksTable
                   students={students}
                   marks={marks}
+                  maxMarks={Number(maxMarks) || 100}
                   onChange={handleMarkChange}
                   disabled={saving}
                 />

@@ -12,7 +12,6 @@ const getSchoolConfigBySlug = async (slug) => {
   return {
     name: school.name,
     slug: school.slug,
-    isActive: school.isActive,
     branding: school.branding || {},
   };
 };

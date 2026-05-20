@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../../components/common/Layout';
 import TimetableCard from '../../components/student/TimetableCard';
+import EmptyState from '../../components/common/EmptyState';
 import { getTimetable } from '../../api/student.api';
 import useApi from '../../hooks/useApi';
 import { fadeInUp } from '../../utils/animationVariants';
@@ -12,6 +13,8 @@ export default function TimetablePage() {
   useEffect(() => {
     execute();
   }, [execute]);
+
+  const periods = data?.data?.periods ?? [];
 
   return (
     <Layout role="student">
@@ -29,8 +32,14 @@ export default function TimetablePage() {
         {error && (
           <p className="text-red-500 text-sm">{error}</p>
         )}
-        {!loading && !error && (
-          <TimetableCard periods={data?.data ?? []} />
+        {!loading && !error && periods.length === 0 && (
+          <EmptyState
+            title="No timetable set yet"
+            message="Your school admin will add your class schedule soon."
+          />
+        )}
+        {!loading && !error && periods.length > 0 && (
+          <TimetableCard periods={periods} />
         )}
       </motion.div>
     </Layout>

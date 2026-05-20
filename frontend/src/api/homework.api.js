@@ -1,9 +1,7 @@
 import axiosInstance from './axiosInstance';
 
-export const createHomework = (formData) =>
-  axiosInstance
-    .post('/teacher/homework', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-    .then((r) => r.data);
+export const createHomework = (data) =>
+  axiosInstance.post('/teacher/homework', data).then((r) => r.data);
 
 export const listHomeworkForClass = (classId) =>
   axiosInstance.get('/teacher/homework', { params: { classId } }).then((r) => r.data);

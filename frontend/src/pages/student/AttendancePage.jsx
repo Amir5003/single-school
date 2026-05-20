@@ -54,7 +54,7 @@ export default function AttendancePage() {
           <p className="text-red-500 text-sm">{error}</p>
         )}
         {!loading && !error && (!data?.data?.records?.length ? (
-          <EmptyState message="No attendance records" />
+          <EmptyState title="No attendance records yet" message="Attendance will appear after your first class." />
         ) : (
           <AttendanceSummary summary={data?.data} />
         ))}

@@ -67,10 +67,15 @@ const {
 
 const { createFeeValidator } = require('../validators/fee.validator');
 const feeController = require('../controllers/fee.controller');
+const feeConfigController = require('../controllers/feeConfig.controller');
 const notificationController = require('../controllers/notification.controller');
 const { validateBrandingUpdate } = require('../validators/school.validator');
 const { uploadLogo: uploadLogoMiddleware } = require('../middleware/uploadMiddleware');
 const brandingController = require('../controllers/admin/branding.controller');
+const { createExamValidator, updateExamValidator } = require('../validators/exam.validator');
+const { upsertResultsValidator } = require('../validators/result.validator');
+const examController = require('../controllers/admin/exam.controller');
+const resultController = require('../controllers/admin/result.controller');
 
 const router = express.Router();
 
@@ -118,8 +123,16 @@ router.put('/users/:id/reject', rejectUser);
 
 // ── Fees ─────────────────────────────────────────────────────────────────────
 router.post('/fees', createFeeValidator, validate, feeController.createFee);
-router.get('/fees', feeController.listFees);
-router.patch('/fees/:id/pay', feeController.markPaid);
+router.get('/fees', feeConfigController.listFeesDetailed);          // enhanced list with details
+router.patch('/fees/:id/pay', feeController.markPaid);              // legacy compat
+router.patch('/fees/:id/status', feeConfigController.updateFeeStatus);
+
+// ── Fee Configs (class-level templates) ──────────────────────────────────────
+router.get('/fee-configs',         feeConfigController.listFeeConfigs);
+router.post('/fee-configs',        feeConfigController.createFeeConfig);
+router.patch('/fee-configs/:id',   feeConfigController.updateFeeConfig);
+router.delete('/fee-configs/:id',  feeConfigController.deleteFeeConfig);
+router.post('/fee-configs/:id/generate', feeConfigController.generateFees);
 
 // ── School Branding ───────────────────────────────────────────────────────────
 router.patch('/school/branding', validateBrandingUpdate, validate, brandingController.updateBranding);
@@ -129,5 +142,14 @@ router.post('/school/logo', uploadLogoMiddleware, brandingController.uploadLogo)
 router.post('/notifications', notificationController.sendNotification);
 router.get('/notifications', notificationController.listNotifications);
 router.patch('/notifications/:id/read', notificationController.markRead);
+
+// ── Exams & Results ───────────────────────────────────────────────────────────
+router.get('/exams', examController.listExams);
+router.post('/exams', createExamValidator, validate, examController.createExam);
+router.get('/exams/:examId', examController.getExam);
+router.put('/exams/:examId', updateExamValidator, validate, examController.updateExam);
+router.delete('/exams/:examId', examController.deleteExam);
+router.get('/exams/:examId/results', resultController.getResultsForExam);
+router.put('/exams/:examId/results', upsertResultsValidator, validate, resultController.upsertResults);
 
 module.exports = router;

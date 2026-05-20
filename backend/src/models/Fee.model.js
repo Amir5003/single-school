@@ -3,14 +3,15 @@ const { Schema } = mongoose;
 
 const feeSchema = new Schema(
   {
-    schoolId: { type: Schema.Types.ObjectId, ref: 'School', required: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
-    amount: { type: Number, required: true, min: 0 },
-    description: { type: String, required: true, trim: true, maxlength: 300 },
-    dueDate: { type: Date, required: true },
+    schoolId:   { type: Schema.Types.ObjectId, ref: 'School',    required: true },
+    studentId:  { type: Schema.Types.ObjectId, ref: 'Student',   required: true },
+    configId:   { type: Schema.Types.ObjectId, ref: 'FeeConfig', default: null },
+    amount:     { type: Number, required: true, min: 0 },
+    description:{ type: String, required: true, trim: true, maxlength: 300 },
+    dueDate:    { type: Date, required: true },
     status: {
       type: String,
-      enum: ['pending', 'paid', 'overdue'],
+      enum: ['pending', 'paid', 'overdue', 'exempt'],
       default: 'pending',
     },
     paidAt: { type: Date, default: null },

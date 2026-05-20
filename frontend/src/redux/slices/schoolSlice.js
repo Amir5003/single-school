@@ -8,6 +8,8 @@ const initialState = {
     primaryColor: '#1a73e8',
     secondaryColor: '#fbbc04',
     tagline: null,
+    address: null,
+    contactNumber: null,
   },
 };
 

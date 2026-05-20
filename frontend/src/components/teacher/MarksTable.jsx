@@ -3,17 +3,18 @@
 // Props:
 //   students  — array of { _id, enrollmentId, userId: { name } }
 //   marks     — { [studentId]: string }  (controlled by parent)
+//   maxMarks  — number (default 100)
 //   onChange  — (studentId, value: string) => void
 //   disabled  — bool
 // ─────────────────────────────────────────────────────────────────────────────
 
-function isInvalid(val) {
+function isInvalid(val, maxMarks) {
   if (!val || val === '') return false;       // empty is allowed (means "no entry")
   const n = Number(val);
-  return isNaN(n) || n < 0 || n > 100;
+  return isNaN(n) || n < 0 || n > maxMarks;
 }
 
-export default function MarksTable({ students, marks, onChange, disabled }) {
+export default function MarksTable({ students, marks, maxMarks = 100, onChange, disabled }) {
   if (!students || students.length === 0) {
     return (
       <p className="text-sm text-gray-400 text-center py-8">
@@ -30,14 +31,14 @@ export default function MarksTable({ students, marks, onChange, disabled }) {
             <th className="pb-2 font-medium pr-4">#</th>
             <th className="pb-2 font-medium pr-4">Enroll ID</th>
             <th className="pb-2 font-medium">Name</th>
-            <th className="pb-2 font-medium text-right">Marks (0 – 100)</th>
+            <th className="pb-2 font-medium text-right">Marks (0 – {maxMarks})</th>
           </tr>
         </thead>
         <tbody>
           {students.map((student, idx) => {
             const name = student.userId?.name ?? '—';
             const val = marks[student._id] ?? '';
-            const invalid = isInvalid(val);
+            const invalid = isInvalid(val, maxMarks);
             return (
               <tr
                 key={student._id}
@@ -53,7 +54,7 @@ export default function MarksTable({ students, marks, onChange, disabled }) {
                     <input
                       type="number"
                       min={0}
-                      max={100}
+                      max={maxMarks}
                       step={1}
                       value={val}
                       disabled={disabled}
@@ -66,7 +67,7 @@ export default function MarksTable({ students, marks, onChange, disabled }) {
                       }`}
                     />
                     {invalid && (
-                      <span className="text-xs text-red-500">0–100 only</span>
+                      <span className="text-xs text-red-500">0–{maxMarks} only</span>
                     )}
                   </div>
                 </td>

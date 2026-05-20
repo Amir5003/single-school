@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const User = require('../models/User.model');
 const Student = require('../models/Student.model');
 // Class model must be registered before any Student.populate('classId') call
@@ -8,6 +9,7 @@ const Attendance = require('../models/Attendance.model');
 const Marks = require('../models/Marks.model');
 const Announcement = require('../models/Announcement.model');
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 
 const MONGO_DUPLICATE_KEY = 11000;
 
@@ -29,7 +31,7 @@ const populateStudent = (query) =>
  * @returns {Promise<{ user, student }>}
  */
 const createStudent = async (data, schoolId) => {
-  const { name, email, password, phone, enrollmentId, dateOfBirth, address } = data;
+  const { name, email, phone, enrollmentId, dateOfBirth, address, password } = data;
   const normalizedId = (enrollmentId || '').toUpperCase();
 
   // Pre-flight duplicate checks (cheaper than letting the DB throw 11000)
@@ -45,13 +47,16 @@ const createStudent = async (data, schoolId) => {
     throw new ApiError(409, 'An account with this email already exists');
   }
 
+  // Use admin-provided password if given; otherwise generate a secure temp password
+  const tempPassword = password || crypto.randomBytes(6).toString('hex'); // 12 hex chars
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     // Mongoose requires array form when passing a session to create()
     const [user] = await User.create(
-      [{ name, email, password, role: 'student', phone: phone || null, schoolId }],
+      [{ name, email, password: tempPassword, role: 'student', phone: phone || null, schoolId, mustChangePassword: true }],
       { session }
     );
     const [student] = await Student.create(
@@ -60,6 +65,15 @@ const createStudent = async (data, schoolId) => {
     );
 
     await session.commitTransaction();
+
+    // Fire-and-forget email — never block the response
+    setImmediate(() => {
+      const emailService = require('./email.service');
+      emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
+        logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
+      });
+    });
+
     return { user, student };
   } catch (err) {
     await session.abortTransaction();

@@ -1,6 +1,6 @@
 # School Management System — Development Guidelines
 
-Auto-generated from feature plan `003-multi-school-saas`. Last updated: 2026-05-17
+Auto-generated from feature plan `004-school-portal-ux`. Last updated: 2026-05-18
 
 ## Active Technologies
 
@@ -13,6 +13,7 @@ Auto-generated from feature plan `003-multi-school-saas`. Last updated: 2026-05-
 - **Cache**: `lru-cache` (in-process, max 500 entries, 5-min TTL) for slug→schoolId resolution
 - **Jobs**: `node-cron` — daily fee overdue status transition (`pending → overdue`)
 - **Image Storage**: `cloudinary` + `multer-storage-cloudinary` (logos, homework attachments)
+- **Email**: `nodemailer` — SMTP via env vars (`SMTP_HOST/PORT/USER/PASS/FROM`); used for temp passwords + password reset links; non-blocking (fire-and-forget with error logging)
 - **Validation**: express-validator 7.x
 - **Testing**: Jest 29 + Supertest 7 + mongodb-memory-server
 
@@ -129,7 +130,24 @@ npm run dev
 - Migration script: `scripts/migrate-to-multitenant.js` (idempotent, guarded by `_migrations` collection)
 - Dynamic branding: CSS custom properties per school applied via `SchoolBrandingProvider`
 
-### 001-school-management (2026-04-07)
+### 004-school-portal-ux (2026-05-18)
+**Added**:
+- Email infrastructure: `nodemailer` + `src/config/mailer.js` + `src/services/email.service.js` (sendTempPassword, sendPasswordResetLink)
+- Password reset flow: `PasswordResetToken` model (SHA-256 token hash, TTL index), `passwordReset.service.js`, forgot/reset/change-password routes
+- Forced first-login password change: `mustChangePassword` flag on User model; login response includes flag; frontend redirects to `/change-password`
+- `lastSchoolSlug` in localStorage: set on login, used by `Home.jsx` to restore school context
+- Login modal overlay: `LoginModal.jsx` via `ReactDOM.createPortal`; `uiSlice` gains `loginModal: { isOpen, redirectTo }`; `ProtectedRoute` dispatches `openLoginModal` instead of hard-navigating
+- Exam/Result module: `Exam.model.js` (schoolId, classId, name, year, term, subjects[], publishedAt, isDeleted) + `Result.model.js` (schoolId, examId, studentId, marks[], overallPercentage, rank); compound indexes on both
+- Admin exam management: `ExamsPage.jsx` + `ResultEntryPage.jsx`; bulk upsert results via `PUT /admin/exams/:examId/results`
+- Student results page: `ResultsPage.jsx` with dynamic year dropdown + term pills + subject result cards (pass/fail badge, progress bar)
+- Dashboard personalisation: greeting banner (Good morning/afternoon/evening + date) with `var(--school-primary)` left accent; school name/logo in Navbar and Sidebar
+- EmptyState component enhancement: added `icon` and `title` props (backward compatible); applied to student sub-sections
+- New API routes: `POST /auth/forgot-password`, `POST /auth/reset-password`, `PUT /auth/change-password`, `GET /student/exams/years`, `GET /student/exams`, `GET /student/results`, full admin exam CRUD
+- Security fix: `getSchoolConfigBySlug` in `school.service.js` no longer returns `isActive` in public response
+- 3 new integration test files: `admin.exams.test.js`, `student.results.test.js`, `password.reset.test.js` (cross-tenant assertions included)
+- New Mongoose collections: `exams`, `results`, `passwordresettokens`
+
+### 003-multi-school-saas (2026-05-17)
 **Added**:
 - Complete backend architecture: models, validators, services, controllers, routes, middleware
 - 9 MongoDB collections: users, students, teachers, classes, class_teachers, timetable, attendance, marks, announcements
