@@ -3,8 +3,10 @@ const Exam = require('../models/Exam.model');
 const ApiError = require('../utils/ApiError');
 
 /**
- * Bulk upsert results for an exam.
- * Validates marksObtained <= totalMarks for each subject.
+ * LEGACY: Bulk upsert results for an exam.
+ * Preserved from 004 for backward compatibility with the legacy direct entry path.
+ * Writes are marked `published: true` to maintain the previous behaviour (admin sees → student sees).
+ * The new 005 flow uses subjectSubmission → exam.publish instead.
  */
 const upsertResults = async (schoolId, examId, results) => {
   const exam = await Exam.findOne({ _id: examId, schoolId, isDeleted: false });
@@ -48,6 +50,7 @@ const upsertResults = async (schoolId, examId, results) => {
             studentId: entry.studentId,
             marks: entry.marks,
             overallPercentage,
+            published: true,
           },
         },
         upsert: true,
@@ -62,25 +65,37 @@ const upsertResults = async (schoolId, examId, results) => {
 };
 
 /**
- * Recompute ranks for all results of an exam (descending overallPercentage).
+ * Recompute ranks for all results of an exam (descending overallPercentage, dense rank with ties).
  */
 const _computeRanks = async (schoolId, examId) => {
   const allResults = await Result.find({ schoolId, examId, isDeleted: false })
     .sort({ overallPercentage: -1 })
     .lean();
 
-  const rankOps = allResults.map((r, i) => ({
-    updateOne: {
-      filter: { _id: r._id },
-      update: { $set: { rank: i + 1 } },
-    },
-  }));
+  let prevPct = null;
+  let prevRank = 0;
+  const rankOps = allResults.map((r, i) => {
+    let rank;
+    if (prevPct !== null && r.overallPercentage === prevPct) {
+      rank = prevRank;
+    } else {
+      rank = i + 1;
+      prevRank = rank;
+      prevPct = r.overallPercentage;
+    }
+    return {
+      updateOne: {
+        filter: { _id: r._id },
+        update: { $set: { rank } },
+      },
+    };
+  });
 
   if (rankOps.length) await Result.bulkWrite(rankOps);
 };
 
 /**
- * Get all results for an exam (admin view).
+ * Get all results for an exam (admin view). Returns all results regardless of published state.
  */
 const getResultsForExam = async (schoolId, examId) => {
   const exam = await Exam.findOne({ _id: examId, schoolId, isDeleted: false });
@@ -95,13 +110,30 @@ const getResultsForExam = async (schoolId, examId) => {
 
 /**
  * Get a single student's result for an exam, with per-subject pass/fail.
+ * STUDENT-FACING: only returns the result if it is published OR if the published flag is undefined
+ * (legacy data shim). Returns 404 when explicitly unpublished.
  */
 const getStudentResult = async (schoolId, studentId, examId) => {
   const exam = await Exam.findOne({ _id: examId, schoolId, isDeleted: false });
   if (!exam) throw new ApiError(404, 'Exam not found');
 
-  const result = await Result.findOne({ examId, studentId, schoolId, isDeleted: false }).lean();
+  // Hide pre-published exams from students
+  if (exam.state && exam.state !== 'published') {
+    throw new ApiError(404, 'No published result');
+  }
+
+  const result = await Result.findOne({
+    examId,
+    studentId,
+    schoolId,
+    isDeleted: false,
+  }).lean();
   if (!result) throw new ApiError(404, 'No result found for this student and exam');
+
+  // Legacy-safe gate: explicit false hides; undefined or true is visible
+  if (result.published === false) {
+    throw new ApiError(404, 'No published result');
+  }
 
   // Attach pass/fail per subject
   const subjectMap = {};

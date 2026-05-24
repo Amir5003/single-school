@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getAdminExams, getExamResults, upsertResults } from '../../api/exam.api';
+import { getAdminExam, getExamResults, upsertResults } from '../../api/exam.api';
 import Layout from '../../components/common/Layout';
 import EmptyState from '../../components/common/EmptyState';
 import { staggerContainer, fadeInUp } from '../../utils/animationVariants';
@@ -20,10 +20,10 @@ export default function ResultEntryPage() {
     setError('');
     try {
       const [examRes, resultsRes] = await Promise.all([
-        getAdminExams({ examId }),
+        getAdminExam(examId),
         getExamResults(examId),
       ]);
-      const examData = examRes.data?.exams?.[0] ?? examRes.data?.exam ?? null;
+      const examData = examRes.data ?? null;
       setExam(examData);
       const existing = resultsRes.data?.results ?? [];
       // Build per-student rows
@@ -117,6 +117,14 @@ export default function ResultEntryPage() {
         >
           {saving ? 'Saving…' : 'Save Results'}
         </button>
+      </div>
+
+      <div className="mb-4 px-4 py-2 bg-amber-50 border border-amber-200 text-xs text-amber-700 rounded-lg">
+        Legacy direct entry — the recommended flow is now via the{' '}
+        <Link to={`/schools/${slug}/admin/exams/${examId}/dashboard`} className="underline font-semibold">
+          Exam Dashboard
+        </Link>
+        {' '}where each teacher enters marks for their assigned subjects and the admin publishes once all are submitted.
       </div>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}

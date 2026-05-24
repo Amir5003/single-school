@@ -74,8 +74,10 @@ const { uploadLogo: uploadLogoMiddleware } = require('../middleware/uploadMiddle
 const brandingController = require('../controllers/admin/branding.controller');
 const { createExamValidator, updateExamValidator } = require('../validators/exam.validator');
 const { upsertResultsValidator } = require('../validators/result.validator');
+const { reassignValidator } = require('../validators/subjectSubmission.validator');
 const examController = require('../controllers/admin/exam.controller');
 const resultController = require('../controllers/admin/result.controller');
+const examLifecycleController = require('../controllers/admin/examLifecycle.controller');
 
 const router = express.Router();
 
@@ -151,5 +153,21 @@ router.put('/exams/:examId', updateExamValidator, validate, examController.updat
 router.delete('/exams/:examId', examController.deleteExam);
 router.get('/exams/:examId/results', resultController.getResultsForExam);
 router.put('/exams/:examId/results', upsertResultsValidator, validate, resultController.upsertResults);
+
+// ── Exam Lifecycle (state machine + dashboard) ───────────────────────────────
+router.post('/exams/:examId/activate', examLifecycleController.activate);
+router.post('/exams/:examId/publish', examLifecycleController.publish);
+router.post('/exams/:examId/revert-to-draft', examLifecycleController.revertToDraft);
+router.get('/exams/:examId/dashboard', examLifecycleController.dashboard);
+router.post(
+  '/exams/:examId/submissions/:submissionId/reopen',
+  examLifecycleController.reopenSubmission
+);
+router.post(
+  '/exams/:examId/submissions/:submissionId/reassign',
+  reassignValidator,
+  validate,
+  examLifecycleController.reassignSubmission
+);
 
 module.exports = router;

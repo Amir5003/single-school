@@ -26,16 +26,18 @@ describe('Student Results API', () => {
       year: 2024,
       term: 'Term 1',
       subjects: [{ name: 'Math', totalMarks: 100 }, { name: 'Science', totalMarks: 80 }],
+      state: 'published',
       publishedAt: new Date(),
     });
 
-    // Insert a result
+    // Insert a result (marked published so student endpoint returns it)
     await Result.create({
       schoolId: school._id,
       examId: exam._id,
       studentId: student._id,
       marks: [{ subject: 'Math', marksObtained: 72 }, { subject: 'Science', marksObtained: 60 }],
       overallPercentage: 72.5,
+      published: true,
     });
   });
 

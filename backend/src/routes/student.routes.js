@@ -70,6 +70,23 @@ router.get('/results', async (req, res, next) => {
   }
 });
 
+// Report-card payload for client-side PDF generation
+router.get('/results/:examId/report-card', async (req, res, next) => {
+  try {
+    const Student = require('../models/Student.model');
+    const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();
+    if (!student) return next(new ApiError(404, 'Student profile not found'));
+    const payload = await examService.buildReportCardPayload(
+      req.school._id,
+      student._id,
+      req.params.examId
+    );
+    res.json(new ApiResponse(200, payload, 'Report card payload retrieved'));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Password ──────────────────────────────────────────────────────────────────
 router.put(
   '/password',

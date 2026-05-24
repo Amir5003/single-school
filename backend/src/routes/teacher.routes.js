@@ -21,6 +21,8 @@ const { uploadHomeworkAttachment } = require('../middleware/uploadMiddleware');
 const { createHomeworkValidator } = require('../validators/homework.validator');
 const validate = require('../middleware/validate');
 const notificationController = require('../controllers/notification.controller');
+const subjectSubmissionController = require('../controllers/teacher/subjectSubmission.controller');
+const { saveDraftValidator } = require('../validators/subjectSubmission.validator');
 
 const router = express.Router();
 
@@ -38,6 +40,18 @@ router.get('/attendance', getAttendance);
 // ── Marks ─────────────────────────────────────────────────────────────────────
 router.post('/marks', saveMark);
 router.get('/marks', getMarks);
+
+// ── Exam subject submissions (005 flow) ───────────────────────────────────────
+router.get('/exams', subjectSubmissionController.listMyExams);
+router.get('/exams/:examId/submissions', subjectSubmissionController.getMySubmissions);
+router.get('/submissions/:id', subjectSubmissionController.getOne);
+router.put(
+  '/submissions/:id/marks',
+  saveDraftValidator,
+  validate,
+  subjectSubmissionController.saveDraft
+);
+router.post('/submissions/:id/submit', subjectSubmissionController.submit);
 
 // ── Announcements ─────────────────────────────────────────────────────────────
 router.post('/announcements', createAnnouncement);

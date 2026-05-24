@@ -22,12 +22,15 @@ import TimetablePage from './pages/admin/TimetablePage';
 import PendingUsersPage from './pages/admin/PendingUsersPage';
 import ExamsPage from './pages/admin/ExamsPage';
 import ResultEntryPage from './pages/admin/ResultEntryPage';
+import ExamDashboardPage from './pages/admin/ExamDashboardPage';
 import SchoolSettingsPage from './pages/admin/SchoolSettingsPage';
 import FeesPage from './pages/admin/FeesPage';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import AttendancePage from './pages/teacher/AttendancePage';
 import MarksPage from './pages/teacher/MarksPage';
 import AnnouncementsPage from './pages/teacher/AnnouncementsPage';
+import MyExamsPage from './pages/teacher/MyExamsPage';
+import SubmissionEntryPage from './pages/teacher/SubmissionEntryPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import ProfilePage from './pages/student/ProfilePage';
 import StudentTimetablePage from './pages/student/TimetablePage';
@@ -146,6 +149,7 @@ export default function App() {
                     <Route path="timetable" element={<TimetablePage />} />
                     <Route path="exams" element={<ExamsPage />} />
                     <Route path="exams/:examId/results" element={<ResultEntryPage />} />
+                    <Route path="exams/:examId/dashboard" element={<ExamDashboardPage />} />
                     <Route path="pending-approvals" element={<PendingUsersPage />} />
                     <Route path="settings" element={<SchoolSettingsPage />} />
                     <Route path="fees" element={<FeesPage />} />
@@ -166,6 +170,8 @@ export default function App() {
                     <Route path="dashboard" element={<TeacherDashboard />} />
                     <Route path="attendance" element={<AttendancePage />} />
                     <Route path="marks" element={<MarksPage />} />
+                    <Route path="my-exams" element={<MyExamsPage />} />
+                    <Route path="submissions/:submissionId" element={<SubmissionEntryPage />} />
                     <Route path="announcements" element={<AnnouncementsPage />} />
                   </Routes>
                 </ErrorBoundary>

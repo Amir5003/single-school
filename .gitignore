@@ -22,5 +22,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude agent runtime files
+.claude/
+
 # Coverage
 coverage/

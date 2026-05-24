@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getExamYears, getExamsForYear, getStudentResult } from '../../api/result.api';
+import {
+  getExamYears,
+  getExamsForYear,
+  getStudentResult,
+  getReportCardPayload,
+} from '../../api/result.api';
 import Layout from '../../components/common/Layout';
 import EmptyState from '../../components/common/EmptyState';
 import { fadeInUp, staggerContainer } from '../../utils/animationVariants';
+import { downloadReportCard } from '../../utils/reportCardPdf';
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Mid-Year', 'Final'];
 
@@ -53,6 +59,8 @@ export default function ResultsPage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resultLoading, setResultLoading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState('');
 
   // Load years on mount
   useEffect(() => {
@@ -89,11 +97,27 @@ export default function ResultsPage() {
     if (!exam) return;
     setResultLoading(true);
     setResult(null);
+    setPdfError('');
     getStudentResult(exam._id)
-      .then((res) => setResult(res.data?.result ?? null))
+      .then((res) => setResult(res.data ?? null))
       .catch(() => setResult(null))
       .finally(() => setResultLoading(false));
   }, [selectedTerm, exams]);
+
+  const handleDownloadReportCard = async () => {
+    const exam = exams.find((e) => e.term === selectedTerm);
+    if (!exam) return;
+    setPdfError('');
+    setDownloadingPdf(true);
+    try {
+      const res = await getReportCardPayload(exam._id);
+      await downloadReportCard(res.data);
+    } catch (err) {
+      setPdfError(err.response?.data?.message || 'Failed to generate report card');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -161,7 +185,7 @@ export default function ResultsPage() {
             <AnimatePresence mode="wait">
               <motion.div key={`${selectedYear}-${activeTerm}`} variants={staggerContainer} initial="hidden" animate="visible">
                 {/* Summary banner */}
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4 mb-5 flex flex-wrap gap-6">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4 mb-5 flex flex-wrap items-center gap-6">
                   <div>
                     <p className="text-xs text-gray-500">Overall</p>
                     <p className="text-2xl font-bold text-indigo-700">{result.overallPercentage?.toFixed(1)}%</p>
@@ -173,12 +197,22 @@ export default function ResultsPage() {
                     </div>
                   )}
                   {activeExam && (
-                    <div className="ml-auto self-center">
+                    <div className="self-center">
                       <p className="text-xs text-gray-400">{activeExam.name}</p>
                       <p className="text-xs text-gray-400">{activeExam.year} · {activeExam.term}</p>
                     </div>
                   )}
+                  <button
+                    onClick={handleDownloadReportCard}
+                    disabled={downloadingPdf}
+                    className="ml-auto px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+                  >
+                    {downloadingPdf ? 'Generating…' : 'Download Report Card'}
+                  </button>
                 </div>
+                {pdfError && (
+                  <p className="text-sm text-red-600 mb-3">{pdfError}</p>
+                )}
 
                 {/* Subject cards grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

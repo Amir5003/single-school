@@ -29,7 +29,17 @@ const examSchema = new mongoose.Schema(
       enum: ['Term 1', 'Term 2', 'Term 3', 'Mid-Year', 'Final'],
     },
     subjects: { type: [subjectSchema], default: [] },
+    state: {
+      type: String,
+      enum: ['draft', 'active', 'locked', 'published'],
+      default: 'draft',
+    },
     publishedAt: { type: Date, default: null },
+    publishedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

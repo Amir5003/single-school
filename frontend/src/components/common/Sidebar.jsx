@@ -28,6 +28,7 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
       { label: 'Dashboard',      to: `${base}/teacher/dashboard` },
       { label: 'Attendance',     to: `${base}/teacher/attendance` },
       { label: 'Marks',          to: `${base}/teacher/marks` },
+      { label: 'My Exams',       to: `${base}/teacher/my-exams` },
       { label: 'Announcements',  to: `${base}/teacher/announcements` },
     ],
     student: [

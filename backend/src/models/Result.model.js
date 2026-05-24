@@ -28,6 +28,7 @@ const resultSchema = new mongoose.Schema(
     marks: { type: [markEntrySchema], default: [] },
     overallPercentage: { type: Number, default: null },
     rank: { type: Number, default: null },
+    published: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
@@ -37,6 +38,7 @@ const resultSchema = new mongoose.Schema(
 resultSchema.index({ schoolId: 1, examId: 1, studentId: 1 }, { unique: true });
 resultSchema.index({ schoolId: 1, studentId: 1, examId: 1 });
 resultSchema.index({ schoolId: 1, examId: 1 });
+resultSchema.index({ schoolId: 1, studentId: 1, published: 1 });
 
 const Result = mongoose.model('Result', resultSchema);
 
