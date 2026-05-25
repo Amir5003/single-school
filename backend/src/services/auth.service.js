@@ -64,7 +64,7 @@ const login = async (email, password) => {
   }
 
   if (!user.isActive) {
-    throw new ApiError(401, 'Invalid email or password');
+    throw new ApiError(403, 'Your account has been deactivated. Please contact the support team.');
   }
 
   const isMatch = await bcrypt.compare(password, user.password);

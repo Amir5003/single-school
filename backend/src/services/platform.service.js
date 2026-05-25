@@ -56,6 +56,18 @@ const activateSchool = async (id) => {
     { new: true, runValidators: true }
   ).lean();
   if (!school) throw new ApiError(404, 'School not found');
+
+  // Approve pending admins (first-time activation)
+  await User.updateMany(
+    { schoolId: school._id, role: 'school-admin', approvalStatus: 'pending' },
+    { approvalStatus: 'approved', isActive: true, rejectionRemark: null }
+  );
+  // Re-enable approved admins that were disabled when the school was deactivated
+  await User.updateMany(
+    { schoolId: school._id, role: 'school-admin', approvalStatus: 'approved', isActive: false },
+    { isActive: true }
+  );
+
   return school;
 };
 
@@ -72,6 +84,13 @@ const deactivateSchool = async (id) => {
     { new: true, runValidators: true }
   ).lean();
   if (!school) throw new ApiError(404, 'School not found');
+
+  // Disable all active school-admin users so login is blocked too
+  await User.updateMany(
+    { schoolId: school._id, role: 'school-admin', isActive: true },
+    { isActive: false }
+  );
+
   return school;
 };
 
