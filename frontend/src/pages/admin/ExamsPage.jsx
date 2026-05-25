@@ -145,47 +145,105 @@ function ExamForm({ onSave, onCancel, classes = [] }) {
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Subjects</label>
+        <label className="block text-xs font-medium text-gray-600 mb-2">Subjects</label>
+
+        {/* Column headers — desktop only */}
         <div className="hidden sm:grid sm:grid-cols-[1fr_5rem_5rem_2rem] gap-2 text-[10px] uppercase tracking-wide text-gray-400 mb-1">
           <span>Subject name</span>
           <span className="text-right pr-1">Max marks</span>
           <span className="text-right pr-1">Pass mark</span>
           <span />
         </div>
+
         {form.subjects.map((s, i) => (
-          <div key={i} className="grid grid-cols-[1fr_5rem_5rem_2rem] gap-2 mb-1 items-center">
-            <input
-              value={s.name}
-              onChange={(e) => setSubject(i, 'name', e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-              placeholder="e.g. Math"
-            />
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={s.totalMarks}
-              onChange={(e) => setSubject(i, 'totalMarks', e.target.value)}
-              className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 text-right"
-              placeholder="100"
-            />
-            <input
-              type="number"
-              min={0}
-              max={1000}
-              value={s.passMark}
-              onChange={(e) => setSubject(i, 'passMark', e.target.value)}
-              className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 text-right"
-              placeholder="auto"
-              title="Leave empty to use 35% of max marks"
-            />
-            {form.subjects.length > 1 ? (
-              <button type="button" onClick={() => removeSubject(i)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
-            ) : <span />}
+          <div key={i} className="mb-2 sm:mb-1">
+
+            {/* ── Mobile: stacked card with labels ──────────────────────── */}
+            <div className="sm:hidden bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-gray-400 mb-1 block">Subject name</label>
+                <input
+                  value={s.name}
+                  onChange={(e) => setSubject(i, 'name', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                  placeholder="e.g. Math"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wide text-gray-400 mb-1 block">Max marks</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={s.totalMarks}
+                    onChange={(e) => setSubject(i, 'totalMarks', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wide text-gray-400 mb-1 block">Pass mark</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1000}
+                    value={s.passMark}
+                    onChange={(e) => setSubject(i, 'passMark', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    placeholder="auto"
+                    title="Leave empty to use 35% of max marks"
+                  />
+                </div>
+              </div>
+              {form.subjects.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSubject(i)}
+                  className="text-xs text-red-400 hover:text-red-600"
+                >
+                  ✕ Remove subject
+                </button>
+              )}
+            </div>
+
+            {/* ── Desktop: inline grid row ───────────────────────────────── */}
+            <div className="hidden sm:grid sm:grid-cols-[1fr_5rem_5rem_2rem] gap-2 items-center">
+              <input
+                value={s.name}
+                onChange={(e) => setSubject(i, 'name', e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="e.g. Math"
+              />
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={s.totalMarks}
+                onChange={(e) => setSubject(i, 'totalMarks', e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 text-right"
+                placeholder="100"
+              />
+              <input
+                type="number"
+                min={0}
+                max={1000}
+                value={s.passMark}
+                onChange={(e) => setSubject(i, 'passMark', e.target.value)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 text-right"
+                placeholder="auto"
+                title="Leave empty to use 35% of max marks"
+              />
+              {form.subjects.length > 1 ? (
+                <button type="button" onClick={() => removeSubject(i)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+              ) : <span />}
+            </div>
+
           </div>
         ))}
+
         <p className="text-[11px] text-gray-400 mt-1">Pass mark is optional — leave empty to default to 35% of max marks.</p>
-        <button type="button" onClick={addSubject} className="text-xs text-indigo-600 hover:underline mt-1">+ Add subject</button>
+        <button type="button" onClick={addSubject} className="text-xs text-indigo-600 hover:underline mt-2">+ Add subject</button>
       </div>
       <div className="flex gap-3 pt-1">
         <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition">

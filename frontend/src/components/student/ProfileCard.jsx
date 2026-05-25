@@ -12,16 +12,14 @@ export default function ProfileCard({ profile }) {
       className="backdrop-blur-sm bg-white/70 rounded-2xl shadow-lg border border-white/20 p-6"
     >
       {/* Avatar + Name */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col items-center text-center gap-2 mb-6">
         <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600 select-none">
-          {profile?.name?.charAt(0)?.toUpperCase() ?? '?'}
+          {profile?.userId?.name?.charAt(0)?.toUpperCase() ?? '?'}
         </div>
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">{profile?.name}</h2>
-          <span className="inline-block mt-1 px-3 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
-            {profile?.enrollmentId ?? '—'}
-          </span>
-        </div>
+        <h2 className="text-xl font-semibold text-gray-900">{profile?.userId?.name}</h2>
+        <span className="px-3 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+          {profile?.enrollmentId ?? '—'}
+        </span>
       </div>
 
       {/* Details grid */}

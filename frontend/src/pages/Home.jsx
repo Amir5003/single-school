@@ -236,6 +236,165 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── Features Grid ─────────────────────────────────────────────────── */}
+        <section className="bg-gray-50 py-20 px-6">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              {...heroFade(0)}
+              className="text-center mb-14"
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+                Everything your school needs
+              </h2>
+              <p className="mt-3 text-gray-500 text-lg max-w-xl mx-auto">
+                One platform to manage every part of your school's daily operations.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: '📋',
+                  title: 'Attendance Tracking',
+                  desc: 'Teachers mark attendance class-by-class. Students and parents see real-time records.',
+                },
+                {
+                  icon: '🎯',
+                  title: 'Marks & Grades',
+                  desc: 'Enter subject-wise marks, view class performance, and share results instantly.',
+                },
+                {
+                  icon: '📝',
+                  title: 'Exam Management',
+                  desc: 'Create exams, assign them to teachers, collect submissions, and publish dashboards.',
+                },
+                {
+                  icon: '🗓️',
+                  title: 'Timetables',
+                  desc: 'Build and publish class timetables. Students access theirs without logging in.',
+                },
+                {
+                  icon: '💳',
+                  title: 'Fee Management',
+                  desc: 'Record and track student fee payments with status across all classes.',
+                },
+                {
+                  icon: '📢',
+                  title: 'Announcements',
+                  desc: 'Broadcast to all or target specific roles — teachers, students, or parents.',
+                },
+              ].map(({ icon, title, desc }) => (
+                <motion.div
+                  key={title}
+                  {...heroFade(0)}
+                  className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-2xl mb-4">
+                    {icon}
+                  </div>
+                  <h3 className="font-semibold text-gray-900 text-base mb-1.5">{title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Built for every role ───────────────────────────────────────────── */}
+        <section className="bg-white py-20 px-6">
+          <div className="max-w-6xl mx-auto">
+            <motion.div {...heroFade(0)} className="text-center mb-14">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+                Built for every role
+              </h2>
+              <p className="mt-3 text-gray-500 text-lg max-w-xl mx-auto">
+                A tailored experience for everyone in your school.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  role: 'Admin',
+                  color: 'from-indigo-500 to-violet-600',
+                  bg: 'bg-indigo-50',
+                  text: 'text-indigo-700',
+                  items: ['Manage students & teachers', 'Approve pending accounts', 'Customize school branding', 'Track fees & exams'],
+                },
+                {
+                  role: 'Teacher',
+                  color: 'from-emerald-500 to-teal-600',
+                  bg: 'bg-emerald-50',
+                  text: 'text-emerald-700',
+                  items: ['Mark attendance by class', 'Enter marks per subject', 'Post announcements', 'Manage and grade exams'],
+                },
+                {
+                  role: 'Student',
+                  color: 'from-orange-400 to-pink-500',
+                  bg: 'bg-orange-50',
+                  text: 'text-orange-700',
+                  items: ['View attendance record', 'Check marks & results', 'See class timetable', 'Read announcements'],
+                },
+                // {
+                //   role: 'Parent',
+                //   color: 'from-sky-500 to-cyan-600',
+                //   bg: 'bg-sky-50',
+                //   text: 'text-sky-700',
+                //   items: ["Monitor child's attendance", "Track child's performance", 'Stay informed with updates', 'Multi-child support'],
+                // },
+              ].map(({ role, color, bg, text, items }) => (
+                <motion.div
+                  key={role}
+                  {...heroFade(0)}
+                  className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <div className={`bg-gradient-to-br ${color} px-5 py-4`}>
+                    <span className="text-white font-bold text-lg">{role}</span>
+                  </div>
+                  <div className="p-5 bg-white">
+                    <ul className="space-y-2">
+                      {items.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                          <span className={`mt-0.5 w-4 h-4 rounded-full ${bg} ${text} flex items-center justify-center text-xs font-bold flex-shrink-0`}>✓</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Multi-school SaaS callout ──────────────────────────────────────── */}
+        {!isAuthenticated && (
+          <section className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 py-16 px-6">
+            <motion.div {...heroFade(0)} className="max-w-3xl mx-auto text-center">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+                Ready to bring your school online?
+              </h2>
+              <p className="mt-4 text-indigo-200 text-lg max-w-xl mx-auto">
+                Register your school in minutes. Custom branding, role-based access, and live updates — all included.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4 justify-center">
+                <Link
+                  to="/register"
+                  className="px-7 py-3.5 bg-white text-indigo-700 font-semibold rounded-2xl shadow-lg hover:bg-indigo-50 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Register your school →
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-7 py-3.5 bg-indigo-500/40 text-white font-semibold rounded-2xl border border-indigo-400/50 hover:bg-indigo-500/60 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Log in
+                </Link>
+              </div>
+            </motion.div>
+          </section>
+        )}
+
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}

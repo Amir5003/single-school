@@ -198,8 +198,51 @@ export default function StudentsPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* ── Mobile: card list ────────────────────────────────────────────────── */}
+      <div className="sm:hidden space-y-2">
+        {tableLoading ? (
+          <div className="py-8 text-center text-gray-400 text-sm">Loading…</div>
+        ) : students.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-sm">
+            {search ? 'No students match your search.' : 'No students yet. Add your first student.'}
+          </div>
+        ) : (
+          students.map((s) => (
+            <div
+              key={s._id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-start justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-800 truncate">{s.userId?.name ?? '—'}</p>
+                <p className="text-xs font-mono text-gray-500 mt-0.5">{s.enrollmentId}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {s.classId
+                    ? `${s.classId.name}${s.classId.section ? ' – ' + s.classId.section : ''}`
+                    : 'No class assigned'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{formatDate(s.createdAt)}</p>
+              </div>
+              <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => openEditModal(s)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => openDeleteModal(s)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop: table ───────────────────────────────────────────────────── */}
+      <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-left text-xs text-gray-500 uppercase font-semibold tracking-wide">
@@ -213,9 +256,7 @@ export default function StudentsPage() {
           <tbody>
             {tableLoading ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-gray-400">
-                  Loading…
-                </td>
+                <td colSpan={5} className="px-5 py-8 text-center text-gray-400">Loading…</td>
               </tr>
             ) : students.length === 0 ? (
               <tr>
@@ -225,22 +266,13 @@ export default function StudentsPage() {
               </tr>
             ) : (
               students.map((s) => (
-                <tr
-                  key={s._id}
-                  className="border-b border-gray-50 hover:bg-gray-50 transition"
-                >
-                  <td className="px-5 py-3 font-medium text-gray-800">
-                    {s.userId?.name ?? '—'}
-                  </td>
-                  <td className="px-5 py-3 text-gray-600 font-mono text-xs">
-                    {s.enrollmentId}
-                  </td>
+                <tr key={s._id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                  <td className="px-5 py-3 font-medium text-gray-800">{s.userId?.name ?? '—'}</td>
+                  <td className="px-5 py-3 text-gray-600 font-mono text-xs">{s.enrollmentId}</td>
                   <td className="px-5 py-3 text-gray-600">
                     {s.classId ? `${s.classId.name}${s.classId.section ? ' – ' + s.classId.section : ''}` : '—'}
                   </td>
-                  <td className="px-5 py-3 text-gray-400 text-xs">
-                    {formatDate(s.createdAt)}
-                  </td>
+                  <td className="px-5 py-3 text-gray-400 text-xs">{formatDate(s.createdAt)}</td>
                   <td className="px-5 py-3 text-right space-x-2">
                     <button
                       onClick={() => openEditModal(s)}

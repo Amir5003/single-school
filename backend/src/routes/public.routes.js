@@ -20,6 +20,22 @@ router.get('/announcements', async (req, res, next) => {
   }
 });
 
+// ── GET /api/v1/public/schools/:slug/announcements ───────────────────────────
+// No authentication required — returns latest 5 active announcements with
+// targetRole 'all' for the given school. Only truly public announcements are
+// exposed here; student/teacher/parent-targeted ones are kept private.
+router.get('/schools/:slug/announcements', slugToSchool, async (req, res, next) => {
+  try {
+    const announcements = await announcementService.getPublicSchoolAnnouncements(
+      req.school._id,
+      5
+    );
+    res.json(new ApiResponse(200, { announcements }, 'Announcements retrieved successfully'));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/v1/public/schools/:slug/config ───────────────────────────────────
 // Public — returns school name, slug, isActive, and branding fields.
 // Used by SchoolContextLoader and SchoolLanding on the frontend.

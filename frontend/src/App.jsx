@@ -128,6 +128,9 @@ export default function App() {
           }
         />
 
+        {/* Redirect bare /schools to home — no slug means nothing to show */}
+        <Route path="/schools" element={<Navigate to="/" replace />} />
+
         {/* School-scoped routes nested under /schools/:slug/ */}
         <Route path="/schools/:slug" element={<SchoolContextLoader />}>
           <Route index element={<SchoolLanding />} />

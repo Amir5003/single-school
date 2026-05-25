@@ -73,6 +73,21 @@ const softDeleteAnnouncement = async (id, teacherId, schoolId) => {
 };
 
 /**
+ * Get publicly visible announcements for a school's landing page.
+ * Only returns targetRole='all' entries — never student/teacher/parent-targeted ones.
+ *
+ * @param {string} schoolId
+ * @param {number} [limit=5]
+ * @returns {Promise<Announcement[]>}
+ */
+const getPublicSchoolAnnouncements = async (schoolId, limit = 5) => {
+  return Announcement.find({ schoolId, isDeleted: false, targetRole: 'all' })
+    .populate({ path: 'teacherId', populate: { path: 'userId', select: 'name' } })
+    .sort({ publishedAt: -1 })
+    .limit(limit);
+};
+
+/**
  * Get the latest active (non-deleted) announcements for public/student views.
  *
  * @param {number} [limit=20]
@@ -135,6 +150,7 @@ module.exports = {
   updateAnnouncement,
   softDeleteAnnouncement,
   getAllActiveAnnouncements,
+  getPublicSchoolAnnouncements,
   adminUpdateAnnouncement,
   adminDeleteAnnouncement,
 };
