@@ -43,7 +43,7 @@ const login = async (req, res, next) => {
       .status(200)
       .cookie('token', accessToken, ACCESS_COOKIE_OPTIONS)
       .cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
-      .json(new ApiResponse(200, { user }, 'Login successful'));
+      .json(new ApiResponse(200, { user, accessToken, refreshToken }, 'Login successful'));
   } catch (err) {
     return next(err);
   }
@@ -51,13 +51,13 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
     const { accessToken } = await authService.refreshAccessToken(refreshToken);
 
     return res
       .status(200)
       .cookie('token', accessToken, ACCESS_COOKIE_OPTIONS)
-      .json(new ApiResponse(200, null, 'Token refreshed'));
+      .json(new ApiResponse(200, { accessToken }, 'Token refreshed'));
   } catch (err) {
     return next(err);
   }

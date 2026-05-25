@@ -2,11 +2,15 @@ const jwt = require('jsonwebtoken');
 const ApiError = require('../utils/ApiError');
 
 /**
- * Reads the httpOnly `token` cookie, verifies the JWT, and attaches
- * `req.user = { _id, role }` for downstream middleware/controllers.
+ * Reads the JWT from the `Authorization: Bearer <token>` header (preferred)
+ * or the legacy httpOnly `token` cookie, then attaches
+ * `req.user = { _id, role, schoolId }` for downstream middleware/controllers.
  */
 const authenticate = (req, _res, next) => {
-  const token = req.cookies?.token;
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  const bearerToken =
+    authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+  const token = bearerToken || req.cookies?.token;
 
   if (!token) {
     return next(new ApiError(401, 'Authentication required'));

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { loginUser } from '../../api/auth.api';
+import { setTokens } from '../../api/tokenStorage';
 import { setCredentials } from '../../redux/slices/authSlice';
 import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import { fadeInUp } from '../../utils/animationVariants';
@@ -46,7 +47,8 @@ export default function LoginForm({ onSuccess, onCancel }) {
 
     try {
       const data = await loginUser({ email, password });
-      const { user } = data.data;
+      const { user, accessToken, refreshToken } = data.data;
+      setTokens({ accessToken, refreshToken });
       const resolvedSlug = user.schoolId?.slug ?? schoolSlug ?? null;
       const resolvedId   = user.schoolId?._id  ?? user.schoolId ?? null;
       dispatch(setCredentials({ user, role: user.role, schoolSlug: resolvedSlug, schoolId: resolvedId }));

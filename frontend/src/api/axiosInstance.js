@@ -1,8 +1,24 @@
 import axios from 'axios';
+import {
+  getAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  clearTokens,
+} from './tokenStorage';
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
+});
+
+// ── Request interceptor — attach Authorization header from localStorage ──────
+axiosInstance.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // ── Injected references (set after store / router are created) ────────────────
@@ -30,6 +46,7 @@ function addToRefreshQueue() {
 }
 
 function redirectToLogin() {
+  clearTokens();
   if (_store) {
     import('../redux/slices/authSlice').then(({ clearCredentials }) => {
       _store.dispatch(clearCredentials());
@@ -66,7 +83,12 @@ axiosInstance.interceptors.response.use(
       _isRefreshing = true;
 
       try {
-        await axiosInstance.post('/auth/refresh');
+        const refreshToken = getRefreshToken();
+        const { data } = await axiosInstance.post('/auth/refresh', { refreshToken });
+        const newAccessToken = data?.data?.accessToken;
+        if (newAccessToken) {
+          setAccessToken(newAccessToken);
+        }
         onRefreshed();
         return axiosInstance(originalRequest);
       } catch {

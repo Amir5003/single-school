@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
 import { selectUser, selectRole, selectIsAuthenticated, selectSchoolSlug, clearCredentials } from '../redux/slices/authSlice';
 import { logoutUser } from '../api/auth.api';
+import { clearTokens } from '../api/tokenStorage';
 
 // ── Motion helpers ────────────────────────────────────────────────────────────
 const reduced =
@@ -63,7 +64,8 @@ export default function Home() {
   }, []);
 
   const handleLogout = async () => {
-    try { await logoutUser(); } catch { /* cookie cleared regardless */ }
+    try { await logoutUser(); } catch { /* tokens cleared regardless */ }
+    clearTokens();
     dispatch(clearCredentials());
     navigate('/login');
   };
