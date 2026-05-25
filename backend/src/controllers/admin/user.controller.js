@@ -3,7 +3,7 @@ const ApiResponse = require('../../utils/ApiResponse');
 
 const listPendingUsers = async (req, res, next) => {
   try {
-    const users = await userService.getPendingUsers();
+    const users = await userService.getPendingUsers(req.user.schoolId);
     return res
       .status(200)
       .json(new ApiResponse(200, { users }, 'Pending users retrieved'));
@@ -14,7 +14,7 @@ const listPendingUsers = async (req, res, next) => {
 
 const approveUser = async (req, res, next) => {
   try {
-    const user = await userService.approveUser(req.params.id);
+    const user = await userService.approveUser(req.params.id, req.user.schoolId);
     return res
       .status(200)
       .json(new ApiResponse(200, { user }, 'User approved'));
@@ -25,7 +25,7 @@ const approveUser = async (req, res, next) => {
 
 const rejectUser = async (req, res, next) => {
   try {
-    const user = await userService.rejectUser(req.params.id);
+    const user = await userService.rejectUser(req.params.id, req.user.schoolId);
     return res
       .status(200)
       .json(new ApiResponse(200, { user }, 'User rejected'));
