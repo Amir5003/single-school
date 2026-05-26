@@ -12,6 +12,6 @@ const parentStudentLinkSchema = new Schema(
 
 parentStudentLinkSchema.index({ schoolId: 1, parentId: 1 });
 parentStudentLinkSchema.index({ schoolId: 1, studentId: 1 });
-parentStudentLinkSchema.index({ parentId: 1, studentId: 1 }, { unique: true });
+parentStudentLinkSchema.index({ schoolId: 1, parentId: 1, studentId: 1 }, { unique: true });
 
 module.exports = mongoose.model('ParentStudentLink', parentStudentLinkSchema);

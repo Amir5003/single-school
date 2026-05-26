@@ -79,8 +79,8 @@ const createTeacher = async (data, schoolId) => {
     await session.abortTransaction();
 
     if (err.code === MONGO_DUPLICATE_KEY) {
-      const field = Object.keys(err.keyPattern || {})[0];
-      const label = field === 'employeeId' ? `Employee ID '${resolvedId}'` : 'email';
+      const keyPattern = err.keyPattern || {};
+      const label = 'employeeId' in keyPattern ? `Employee ID '${resolvedId}'` : 'email';
       throw new ApiError(409, `${label} is already in use`);
     }
     throw err;
@@ -158,7 +158,12 @@ const updateTeacher = async (id, data, schoolId) => {
   if (phone !== undefined) userUpdate.phone = phone;
 
   const teacherUpdate = {};
-  if (employeeId !== undefined) teacherUpdate.employeeId = employeeId.toUpperCase();
+  if (employeeId !== undefined) {
+    const normalized = employeeId.toUpperCase();
+    const conflict = await Teacher.findOne({ schoolId, employeeId: normalized, _id: { $ne: id } });
+    if (conflict) throw new ApiError(409, `Employee ID '${normalized}' is already in use`);
+    teacherUpdate.employeeId = normalized;
+  }
 
   await Promise.all([
     Object.keys(userUpdate).length > 0

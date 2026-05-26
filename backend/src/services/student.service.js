@@ -79,11 +79,10 @@ const createStudent = async (data, schoolId) => {
     await session.abortTransaction();
 
     if (err.code === MONGO_DUPLICATE_KEY) {
-      const field = Object.keys(err.keyPattern || {})[0];
-      const label =
-        field === 'enrollmentId'
-          ? `Enrollment ID '${normalizedId}'`
-          : 'email';
+      const keyPattern = err.keyPattern || {};
+      const label = 'enrollmentId' in keyPattern
+        ? `Enrollment ID '${normalizedId}'`
+        : 'email';
       throw new ApiError(409, `${label} is already in use`);
     }
     throw err;
@@ -166,7 +165,12 @@ const updateStudent = async (id, data, schoolId) => {
   if (phone !== undefined) userUpdate.phone = phone;
 
   const studentUpdate = {};
-  if (enrollmentId !== undefined) studentUpdate.enrollmentId = enrollmentId.toUpperCase();
+  if (enrollmentId !== undefined) {
+    const normalized = enrollmentId.toUpperCase();
+    const conflict = await Student.findOne({ schoolId, enrollmentId: normalized, _id: { $ne: id } });
+    if (conflict) throw new ApiError(409, `Enrollment ID '${normalized}' is already in use`);
+    studentUpdate.enrollmentId = normalized;
+  }
   if (dateOfBirth !== undefined) studentUpdate.dateOfBirth = dateOfBirth;
   if (address !== undefined) studentUpdate.address = address;
 
