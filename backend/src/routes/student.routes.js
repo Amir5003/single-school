@@ -20,11 +20,15 @@ const ApiError = require('../utils/ApiError');
 const passwordResetService = require('../services/passwordReset.service');
 const { body } = require('express-validator');
 const validate = require('../middleware/validate');
+const checkFeatureAccess = require('../middleware/checkFeatureAccess');
+const { FEATURES } = require('../services/subscription/pricing.service');
 
 const router = express.Router();
 
 // All student routes require authentication + school scope + student role
 router.use(authenticate, schoolScope, authorize('student'));
+
+const examsFeature = checkFeatureAccess(FEATURES.EXAMS_RESULTS);
 
 router.get('/profile',       getProfile);
 router.get('/timetable',     getTimetable);
@@ -36,8 +40,8 @@ router.get('/homework', homeworkController.getStudentHomework);
 router.get('/notifications', notificationController.listNotifications);
 router.patch('/notifications/:id/read', notificationController.markRead);
 
-// ── Exams & Results ───────────────────────────────────────────────────────────
-router.get('/exams/years', async (req, res, next) => {
+// ── Exams & Results — gated by EXAMS_RESULTS feature (not in Starter) ────────
+router.get('/exams/years', examsFeature, async (req, res, next) => {
   try {
     const years = await examService.getDistinctYears(req.school._id);
     res.json(new ApiResponse(200, { years }, 'Years retrieved'));
@@ -46,7 +50,7 @@ router.get('/exams/years', async (req, res, next) => {
   }
 });
 
-router.get('/exams', async (req, res, next) => {
+router.get('/exams', examsFeature, async (req, res, next) => {
   try {
     const Student = require('../models/Student.model');
     const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();
@@ -58,7 +62,7 @@ router.get('/exams', async (req, res, next) => {
   }
 });
 
-router.get('/results', async (req, res, next) => {
+router.get('/results', examsFeature, async (req, res, next) => {
   try {
     const Student = require('../models/Student.model');
     const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();
@@ -71,7 +75,7 @@ router.get('/results', async (req, res, next) => {
 });
 
 // Report-card payload for client-side PDF generation
-router.get('/results/:examId/report-card', async (req, res, next) => {
+router.get('/results/:examId/report-card', examsFeature, async (req, res, next) => {
   try {
     const Student = require('../models/Student.model');
     const student = await Student.findOne({ userId: req.user._id, schoolId: req.school._id }).lean();

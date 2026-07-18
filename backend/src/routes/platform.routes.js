@@ -19,4 +19,9 @@ router.get('/pending-registrations', platformController.listPendingRegistrations
 router.patch('/registrations/:userId/approve', platformController.approveRegistration);
 router.patch('/registrations/:userId/reject', platformController.rejectRegistration);
 
+// Subscription analytics (feature 006)
+router.get('/subscriptions', platformController.listSubscriptions);
+router.get('/subscriptions/analytics', platformController.getSubscriptionAnalytics);
+router.get('/subscriptions/:schoolId/events', platformController.getSubscriptionEvents);
+
 module.exports = router;

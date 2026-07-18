@@ -6,9 +6,15 @@ const logger = require('../utils/logger');
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   if (err instanceof ApiError) {
-    return res
-      .status(err.statusCode)
-      .json(new ApiResponse(err.statusCode, null, err.message));
+    const body = new ApiResponse(err.statusCode, null, err.message);
+    // Attach machine-readable error code + auxiliary data (e.g. subscription
+    // payload on 402s) so the frontend can branch deterministically.
+    if (err.code) body.code = err.code;
+    if (err.subscription) body.subscription = err.subscription;
+    if (typeof err.shouldSchedule === 'boolean') body.shouldSchedule = err.shouldSchedule;
+    if (err.changeType) body.changeType = err.changeType;
+    if (err.feature) body.feature = err.feature;
+    return res.status(err.statusCode).json(body);
   }
 
   // Mongoose validation errors (min/max, enum, required, pattern)

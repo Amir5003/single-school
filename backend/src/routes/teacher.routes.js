@@ -2,6 +2,12 @@ const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const schoolScope = require('../middleware/schoolScope');
+const checkSubscriptionAccess = require('../middleware/checkSubscriptionAccess');
+const checkFeatureAccess = require('../middleware/checkFeatureAccess');
+const { FEATURES } = require('../services/subscription/pricing.service');
+
+const teacherWrite = checkSubscriptionAccess('teacher_write');
+const examsFeature = checkFeatureAccess(FEATURES.EXAMS_RESULTS);
 
 const {
   getAssignedClasses,
@@ -34,34 +40,36 @@ router.get('/classes', getAssignedClasses);
 router.get('/classes/:classId/students', getClassStudents);
 
 // ── Attendance ────────────────────────────────────────────────────────────────
-router.post('/attendance', markAttendance);
+router.post('/attendance', teacherWrite, markAttendance);
 router.get('/attendance', getAttendance);
 
 // ── Marks ─────────────────────────────────────────────────────────────────────
-router.post('/marks', saveMark);
+router.post('/marks', teacherWrite, saveMark);
 router.get('/marks', getMarks);
 
-// ── Exam subject submissions (005 flow) ───────────────────────────────────────
-router.get('/exams', subjectSubmissionController.listMyExams);
-router.get('/exams/:examId/submissions', subjectSubmissionController.getMySubmissions);
-router.get('/submissions/:id', subjectSubmissionController.getOne);
+// ── Exam subject submissions (005 flow) — gated by EXAMS_RESULTS feature ─────
+router.get('/exams', examsFeature, subjectSubmissionController.listMyExams);
+router.get('/exams/:examId/submissions', examsFeature, subjectSubmissionController.getMySubmissions);
+router.get('/submissions/:id', examsFeature, subjectSubmissionController.getOne);
 router.put(
   '/submissions/:id/marks',
+  examsFeature,
+  teacherWrite,
   saveDraftValidator,
   validate,
   subjectSubmissionController.saveDraft
 );
-router.post('/submissions/:id/submit', subjectSubmissionController.submit);
+router.post('/submissions/:id/submit', examsFeature, teacherWrite, subjectSubmissionController.submit);
 
 // ── Announcements ─────────────────────────────────────────────────────────────
-router.post('/announcements', createAnnouncement);
+router.post('/announcements', teacherWrite, createAnnouncement);
 router.get('/announcements', getAnnouncements);
-router.put('/announcements/:id', updateAnnouncement);
-router.delete('/announcements/:id', deleteAnnouncement);
+router.put('/announcements/:id', teacherWrite, updateAnnouncement);
+router.delete('/announcements/:id', teacherWrite, deleteAnnouncement);
 // ── Homework ─────────────────────────────────────────────────────────────────
-router.post('/homework', uploadHomeworkAttachment, createHomeworkValidator, validate, homeworkController.createHomework);
+router.post('/homework', teacherWrite, uploadHomeworkAttachment, createHomeworkValidator, validate, homeworkController.createHomework);
 router.get('/homework', homeworkController.listHomework);
-router.delete('/homework/:id', homeworkController.deleteHomework);
+router.delete('/homework/:id', teacherWrite, homeworkController.deleteHomework);
 // ── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', notificationController.listNotifications);
 router.patch('/notifications/:id/read', notificationController.markRead);

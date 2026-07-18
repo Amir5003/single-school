@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import SubscriptionGate from './SubscriptionGate';
+import ChatSupport from './ChatSupport';
 
 /**
  * Shell layout shared by all authenticated role dashboards.
@@ -14,6 +16,7 @@ export default function Layout({ role, children }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
       <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+      <SubscriptionGate />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           role={role}
@@ -24,6 +27,7 @@ export default function Layout({ role, children }) {
           {children}
         </main>
       </div>
+      <ChatSupport />
     </div>
   );
 }

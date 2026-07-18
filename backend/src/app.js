@@ -11,6 +11,8 @@ const publicRoutes = require('./routes/public.routes');
 const onboardingRoutes = require('./routes/onboarding.routes');
 const platformRoutes = require('./routes/platform.routes');
 const parentRoutes = require('./routes/parent.routes');
+const subscriptionRoutes = require('./routes/subscription.routes');
+const webhookRoutes = require('./routes/webhook.routes');
 
 const app = express();
 
@@ -34,7 +36,17 @@ app.use(
 
 // ── Request parsing ──────────────────────────────────────────────────────────
 app.use(cookieParser());
-app.use(express.json());
+// Capture the raw body for webhook signature verification. Express 5 still
+// allows us to attach `req.rawBody` via the verify callback.
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      if (req.originalUrl && req.originalUrl.startsWith('/api/v1/webhooks')) {
+        req.rawBody = Buffer.from(buf);
+      }
+    },
+  })
+);
 
 // ── HTTP request logging (skipped in test env to keep output clean) ──────────
 if (process.env.NODE_ENV !== 'test') {
@@ -55,6 +67,9 @@ app.use('/api/v1/public', publicRoutes);
 // ── Auth ──────────────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
 
+// ── Payment webhooks (unauthenticated; signature-verified) ────────────────────
+app.use('/api/v1/webhooks', webhookRoutes);
+
 // ── Platform (super-admin only — NO schoolScope) ──────────────────────────────
 app.use('/api/v1/platform', platformRoutes);
 
@@ -63,6 +78,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/teacher', teacherRoutes);
 app.use('/api/v1/student', studentRoutes);
 app.use('/api/v1/parent', parentRoutes);
+app.use('/api/v1/subscription', subscriptionRoutes);
 
 // ── Global error handler (must be last) ──────────────────────────────────────
 app.use(errorHandler);

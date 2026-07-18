@@ -2,6 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import { selectSchoolName, selectSchoolBranding } from '../../redux/slices/schoolSlice';
+import { selectFeatures } from '../../redux/slices/subscriptionSlice';
+import { FEATURES } from '../../utils/features';
 
 const activeClass = 'bg-indigo-50 text-indigo-700 font-semibold';
 const baseClass   = 'block rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition';
@@ -10,7 +12,20 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
   const schoolSlug = useSelector(selectSchoolSlug);
   const schoolName = useSelector(selectSchoolName);
   const branding   = useSelector(selectSchoolBranding);
+  const features   = useSelector(selectFeatures);
   const base = schoolSlug ? `/schools/${schoolSlug}` : '';
+
+  // `requires` is checked against the school's entitled features list. For
+  // the school-admin role we hard-rely on the subscription slice being
+  // hydrated; for teachers/students we *fail open* (show the link) if the
+  // features array is empty, because non-admin roles don't fetch the
+  // subscription — instead the backend's checkFeatureAccess middleware
+  // will reject and the page will render an upgrade hint.
+  const hasFeature = (feature) => {
+    if (!feature) return true;
+    if (role === 'school-admin') return features.includes(feature);
+    return features.length === 0 ? true : features.includes(feature);
+  };
 
   const NAV_ITEMS = {
     'school-admin': [
@@ -19,16 +34,17 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
       { label: 'Teachers',          to: `${base}/admin/teachers` },
       { label: 'Classes',           to: `${base}/admin/classes` },
       { label: 'Timetable',         to: `${base}/admin/timetable` },
-      { label: 'Exams',             to: `${base}/admin/exams` },
+      { label: 'Exams',             to: `${base}/admin/exams`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Fees',              to: `${base}/admin/fees` },
       { label: 'Pending Approvals', to: `${base}/admin/pending-approvals` },
       { label: 'School Settings',   to: `${base}/admin/settings` },
+      { label: 'Billing',           to: `${base}/admin/billing` },
     ],
     teacher: [
       { label: 'Dashboard',      to: `${base}/teacher/dashboard` },
       { label: 'Attendance',     to: `${base}/teacher/attendance` },
       { label: 'Marks',          to: `${base}/teacher/marks` },
-      { label: 'My Exams',       to: `${base}/teacher/my-exams` },
+      { label: 'My Exams',       to: `${base}/teacher/my-exams`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/teacher/announcements` },
     ],
     student: [
@@ -37,7 +53,7 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
       { label: 'Timetable',      to: `${base}/student/timetable` },
       { label: 'Attendance',     to: `${base}/student/attendance` },
       { label: 'Marks',          to: `${base}/student/marks` },
-      { label: 'My Results',     to: `${base}/student/results` },
+      { label: 'My Results',     to: `${base}/student/results`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/student/announcements` },
     ],
     parent: [
@@ -46,10 +62,11 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
     'super-admin': [
       { label: 'Schools',               to: '/platform/schools' },
       { label: 'Pending Registrations', to: '/platform/pending' },
+      { label: 'Subscriptions',         to: '/platform/subscriptions' },
     ],
   };
 
-  const items = NAV_ITEMS[role] || [];
+  const items = (NAV_ITEMS[role] || []).filter((item) => hasFeature(item.requires));
 
   return (
     <>

@@ -4,6 +4,7 @@ import Navbar from './Navbar';
 const PLATFORM_NAV = [
   { label: 'Schools',               to: '/platform/schools' },
   { label: 'Pending Registrations', to: '/platform/pending' },
+  { label: 'Subscriptions',         to: '/platform/subscriptions' },
 ];
 
 const activeClass = 'bg-indigo-50 text-indigo-700 font-semibold';

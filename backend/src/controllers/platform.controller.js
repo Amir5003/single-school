@@ -112,6 +112,49 @@ const rejectRegistration = async (req, res, next) => {
   }
 };
 
+// ── Subscription analytics (feature 006) ─────────────────────────────────────
+
+/**
+ * GET /api/v1/platform/subscriptions?page=&limit=&status=
+ */
+const listSubscriptions = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 25, status } = req.query;
+    const result = await platformService.listSubscriptions({
+      page: parseInt(page, 10),
+      limit: Math.min(parseInt(limit, 10), 100),
+      status,
+    });
+    return res.status(200).json(new ApiResponse(200, result, 'Subscriptions retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * GET /api/v1/platform/subscriptions/analytics
+ */
+const getSubscriptionAnalytics = async (req, res, next) => {
+  try {
+    const analytics = await platformService.getSubscriptionAnalytics();
+    return res.status(200).json(new ApiResponse(200, { analytics }, 'Subscription analytics retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * GET /api/v1/platform/subscriptions/:schoolId/events
+ */
+const getSubscriptionEvents = async (req, res, next) => {
+  try {
+    const data = await platformService.getSubscriptionEvents(req.params.schoolId);
+    return res.status(200).json(new ApiResponse(200, data, 'Subscription events retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   listSchools,
   getSchool,
@@ -121,4 +164,7 @@ module.exports = {
   listPendingRegistrations,
   approveRegistration,
   rejectRegistration,
+  listSubscriptions,
+  getSubscriptionAnalytics,
+  getSubscriptionEvents,
 };

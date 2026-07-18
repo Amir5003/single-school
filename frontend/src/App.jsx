@@ -25,6 +25,9 @@ import ResultEntryPage from './pages/admin/ResultEntryPage';
 import ExamDashboardPage from './pages/admin/ExamDashboardPage';
 import SchoolSettingsPage from './pages/admin/SchoolSettingsPage';
 import FeesPage from './pages/admin/FeesPage';
+import BillingPage from './pages/admin/BillingPage';
+import FeatureGate from './components/common/FeatureGate';
+import { FEATURES } from './utils/features';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import AttendancePage from './pages/teacher/AttendancePage';
 import MarksPage from './pages/teacher/MarksPage';
@@ -41,6 +44,7 @@ import ResultsPage from './pages/student/ResultsPage';
 import SchoolsList from './pages/platform/SchoolsList';
 import SchoolDetail from './pages/platform/SchoolDetail';
 import PendingRegistrations from './pages/platform/PendingRegistrations';
+import SubscriptionsAnalytics from './pages/platform/SubscriptionsAnalytics';
 import ParentDashboard from './pages/parent/ParentDashboard';
 import ChildDetail from './pages/parent/ChildDetail';
 import NotFound from './pages/NotFound';
@@ -122,6 +126,7 @@ export default function App() {
                   <Route path="schools" element={<SchoolsList />} />
                   <Route path="schools/:id" element={<SchoolDetail />} />
                   <Route path="pending" element={<PendingRegistrations />} />
+                  <Route path="subscriptions" element={<SubscriptionsAnalytics />} />
                 </Routes>
               </ErrorBoundary>
             </ProtectedRoute>
@@ -150,12 +155,34 @@ export default function App() {
                     <Route path="teachers" element={<TeachersPage />} />
                     <Route path="classes" element={<ClassesPage />} />
                     <Route path="timetable" element={<TimetablePage />} />
-                    <Route path="exams" element={<ExamsPage />} />
-                    <Route path="exams/:examId/results" element={<ResultEntryPage />} />
-                    <Route path="exams/:examId/dashboard" element={<ExamDashboardPage />} />
+                    <Route
+                      path="exams"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS}>
+                          <ExamsPage />
+                        </FeatureGate>
+                      }
+                    />
+                    <Route
+                      path="exams/:examId/results"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS}>
+                          <ResultEntryPage />
+                        </FeatureGate>
+                      }
+                    />
+                    <Route
+                      path="exams/:examId/dashboard"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS}>
+                          <ExamDashboardPage />
+                        </FeatureGate>
+                      }
+                    />
                     <Route path="pending-approvals" element={<PendingUsersPage />} />
                     <Route path="settings" element={<SchoolSettingsPage />} />
                     <Route path="fees" element={<FeesPage />} />
+                    <Route path="billing" element={<BillingPage />} />
                   </Routes>
                 </ErrorBoundary>
               </ProtectedRoute>

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const School = require('../models/School.model');
 const User = require('../models/User.model');
 const ApiError = require('../utils/ApiError');
+const subscriptionLifecycle = require('./subscription/lifecycle.service');
 
 /**
  * Check if a slug is available and suggest alternatives if taken.
@@ -71,6 +72,12 @@ const registerSchool = async ({ name, slug, adminEmail, adminPassword, phone }) 
         ],
         { session }
       );
+
+      // Bootstrap the 30-day free trial. The School.subscription subdoc
+      // already has sane defaults from the schema, but we call the
+      // lifecycle initializer so the trial_started event is logged
+      // atomically with school creation.
+      await subscriptionLifecycle.initializeForNewSchool(school._id, { session });
     });
   } finally {
     await session.endSession();

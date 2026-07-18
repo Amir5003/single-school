@@ -21,6 +21,23 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+/**
+ * Optional global pricing promo — a fraction in [0, 0.9] applied on top of each
+ * plan's sale price (e.g. 0.10 = an extra 10% off). Empty/undefined = no promo.
+ * Kept here so all pricing config lives in one validated place.
+ */
+const parsePricingPromoPct = () => {
+  const raw = process.env.PRICING_PROMO_PCT;
+  if (raw == null || raw === '') return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 0.9) {
+    throw new Error(
+      'PRICING_PROMO_PCT must be a number between 0 and 0.9 (e.g. 0.10 for 10% off)'
+    );
+  }
+  return n;
+};
+
 module.exports = {
   PORT: process.env.PORT,
   MONGO_URI: process.env.MONGO_URI,
@@ -39,4 +56,6 @@ module.exports = {
   SEED_SCHOOL_ID: process.env.SEED_SCHOOL_ID,
   SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL,
   SUPER_ADMIN_PASSWORD: process.env.SUPER_ADMIN_PASSWORD,
+  // Pricing — optional global promo fraction, validated to [0, 0.9]
+  PRICING_PROMO_PCT: parsePricingPromoPct(),
 };

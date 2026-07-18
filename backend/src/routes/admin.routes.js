@@ -3,6 +3,14 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const schoolScope = require('../middleware/schoolScope');
 const validate = require('../middleware/validate');
+const checkSubscriptionAccess = require('../middleware/checkSubscriptionAccess');
+const checkFeatureAccess = require('../middleware/checkFeatureAccess');
+const { FEATURES } = require('../services/subscription/pricing.service');
+
+// Shorthand: subscription gate factory for admin mutating routes.
+const adminWrite = checkSubscriptionAccess('admin_write');
+const studentOnboarding = checkSubscriptionAccess('student_onboarding');
+const examsFeature = checkFeatureAccess(FEATURES.EXAMS_RESULTS);
 
 const {
   createStudentValidator,
@@ -85,86 +93,93 @@ const router = express.Router();
 router.use(authenticate, schoolScope, authorize('school-admin'));
 
 // ── Student CRUD ──────────────────────────────────────────────────────────────
+// POST gated by `student_onboarding` to enforce the trial student-limit.
+// PUT/DELETE gated by `admin_write` — modifying existing students is allowed
+// while in trial_limit_reached but blocked when expired/cancelled.
 router.get('/students', listStudents);
-router.post('/students', createStudentValidator, validate, createStudent);
+router.post('/students', studentOnboarding, createStudentValidator, validate, createStudent);
 router.get('/students/:id', getStudent);
-router.put('/students/:id', updateStudentValidator, validate, updateStudent);
-router.delete('/students/:id', deleteStudent);
+router.put('/students/:id', adminWrite, updateStudentValidator, validate, updateStudent);
+router.delete('/students/:id', adminWrite, deleteStudent);
 
 // ── Teacher CRUD ──────────────────────────────────────────────────────────────
 router.get('/teachers', listTeachers);
-router.post('/teachers', createTeacherValidator, validate, createTeacher);
+router.post('/teachers', adminWrite, createTeacherValidator, validate, createTeacher);
 router.get('/teachers/:id', getTeacher);
-router.put('/teachers/:id', updateTeacherValidator, validate, updateTeacher);
-router.delete('/teachers/:id', deleteTeacher);
-router.post('/teachers/:id/assign-class', assignClassValidator, validate, assignToClass);
+router.put('/teachers/:id', adminWrite, updateTeacherValidator, validate, updateTeacher);
+router.delete('/teachers/:id', adminWrite, deleteTeacher);
+router.post('/teachers/:id/assign-class', adminWrite, assignClassValidator, validate, assignToClass);
 
 // ── Class CRUD ────────────────────────────────────────────────────────────────
 router.get('/classes', listClasses);
-router.post('/classes', createClassValidator, validate, createClass);
+router.post('/classes', adminWrite, createClassValidator, validate, createClass);
 router.get('/classes/:id', getClass);
-router.put('/classes/:id', updateClassValidator, validate, updateClass);
-router.delete('/classes/:id', deleteClass);
-router.post('/classes/:id/assign-teacher', assignTeacherValidator, validate, assignTeacher);
-router.post('/classes/:id/assign-students', assignStudentsValidator, validate, assignStudents);
+router.put('/classes/:id', adminWrite, updateClassValidator, validate, updateClass);
+router.delete('/classes/:id', adminWrite, deleteClass);
+router.post('/classes/:id/assign-teacher', adminWrite, assignTeacherValidator, validate, assignTeacher);
+router.post('/classes/:id/assign-students', adminWrite, assignStudentsValidator, validate, assignStudents);
 
 // ── Timetable ─────────────────────────────────────────────────────────────────
 router.get('/timetable', listByClass);
-router.post('/timetable', createTimetableValidator, validate, createEntry);
-router.put('/timetable/:id', updateTimetableValidator, validate, updateEntry);
-router.delete('/timetable/:id', deleteEntry);
+router.post('/timetable', adminWrite, createTimetableValidator, validate, createEntry);
+router.put('/timetable/:id', adminWrite, updateTimetableValidator, validate, updateEntry);
+router.delete('/timetable/:id', adminWrite, deleteEntry);
 
 // ── Announcements (admin manages all) ────────────────────────────────────────
 router.get('/announcements', listAnnouncements);
-router.put('/announcements/:id', adminUpdateAnnouncement);
-router.delete('/announcements/:id', adminDeleteAnnouncement);
+router.put('/announcements/:id', adminWrite, adminUpdateAnnouncement);
+router.delete('/announcements/:id', adminWrite, adminDeleteAnnouncement);
 // ── User approval ─────────────────────────────────────────────────────────────
 router.get('/users/pending', listPendingUsers);
-router.put('/users/:id/approve', approveUser);
-router.put('/users/:id/reject', rejectUser);
+router.put('/users/:id/approve', adminWrite, approveUser);
+router.put('/users/:id/reject', adminWrite, rejectUser);
 
 // ── Fees ─────────────────────────────────────────────────────────────────────
-router.post('/fees', createFeeValidator, validate, feeController.createFee);
+router.post('/fees', adminWrite, createFeeValidator, validate, feeController.createFee);
 router.get('/fees', feeConfigController.listFeesDetailed);          // enhanced list with details
-router.patch('/fees/:id/pay', feeController.markPaid);              // legacy compat
-router.patch('/fees/:id/status', feeConfigController.updateFeeStatus);
+router.patch('/fees/:id/pay', adminWrite, feeController.markPaid);              // legacy compat
+router.patch('/fees/:id/status', adminWrite, feeConfigController.updateFeeStatus);
 
 // ── Fee Configs (class-level templates) ──────────────────────────────────────
 router.get('/fee-configs',         feeConfigController.listFeeConfigs);
-router.post('/fee-configs',        feeConfigController.createFeeConfig);
-router.patch('/fee-configs/:id',   feeConfigController.updateFeeConfig);
-router.delete('/fee-configs/:id',  feeConfigController.deleteFeeConfig);
-router.post('/fee-configs/:id/generate', feeConfigController.generateFees);
+router.post('/fee-configs',        adminWrite, feeConfigController.createFeeConfig);
+router.patch('/fee-configs/:id',   adminWrite, feeConfigController.updateFeeConfig);
+router.delete('/fee-configs/:id',  adminWrite, feeConfigController.deleteFeeConfig);
+router.post('/fee-configs/:id/generate', adminWrite, feeConfigController.generateFees);
 
 // ── School Branding ───────────────────────────────────────────────────────────
-router.patch('/school/branding', validateBrandingUpdate, validate, brandingController.updateBranding);
-router.post('/school/logo', uploadLogoMiddleware, brandingController.uploadLogo);
+router.patch('/school/branding', adminWrite, validateBrandingUpdate, validate, brandingController.updateBranding);
+router.post('/school/logo', adminWrite, uploadLogoMiddleware, brandingController.uploadLogo);
 
 // ── Notifications ───────────────────────────────────────────────────────────
-router.post('/notifications', notificationController.sendNotification);
+router.post('/notifications', adminWrite, notificationController.sendNotification);
 router.get('/notifications', notificationController.listNotifications);
 router.patch('/notifications/:id/read', notificationController.markRead);
 
-// ── Exams & Results ───────────────────────────────────────────────────────────
-router.get('/exams', examController.listExams);
-router.post('/exams', createExamValidator, validate, examController.createExam);
-router.get('/exams/:examId', examController.getExam);
-router.put('/exams/:examId', updateExamValidator, validate, examController.updateExam);
-router.delete('/exams/:examId', examController.deleteExam);
-router.get('/exams/:examId/results', resultController.getResultsForExam);
-router.put('/exams/:examId/results', upsertResultsValidator, validate, resultController.upsertResults);
+// ── Exams & Results (gated by EXAMS_RESULTS feature — not in Starter) ────────
+router.get('/exams', examsFeature, examController.listExams);
+router.post('/exams', examsFeature, adminWrite, createExamValidator, validate, examController.createExam);
+router.get('/exams/:examId', examsFeature, examController.getExam);
+router.put('/exams/:examId', examsFeature, adminWrite, updateExamValidator, validate, examController.updateExam);
+router.delete('/exams/:examId', examsFeature, adminWrite, examController.deleteExam);
+router.get('/exams/:examId/results', examsFeature, resultController.getResultsForExam);
+router.put('/exams/:examId/results', examsFeature, adminWrite, upsertResultsValidator, validate, resultController.upsertResults);
 
 // ── Exam Lifecycle (state machine + dashboard) ───────────────────────────────
-router.post('/exams/:examId/activate', examLifecycleController.activate);
-router.post('/exams/:examId/publish', examLifecycleController.publish);
-router.post('/exams/:examId/revert-to-draft', examLifecycleController.revertToDraft);
-router.get('/exams/:examId/dashboard', examLifecycleController.dashboard);
+router.post('/exams/:examId/activate', examsFeature, adminWrite, examLifecycleController.activate);
+router.post('/exams/:examId/publish', examsFeature, adminWrite, examLifecycleController.publish);
+router.post('/exams/:examId/revert-to-draft', examsFeature, adminWrite, examLifecycleController.revertToDraft);
+router.get('/exams/:examId/dashboard', examsFeature, examLifecycleController.dashboard);
 router.post(
   '/exams/:examId/submissions/:submissionId/reopen',
+  examsFeature,
+  adminWrite,
   examLifecycleController.reopenSubmission
 );
 router.post(
   '/exams/:examId/submissions/:submissionId/reassign',
+  examsFeature,
+  adminWrite,
   reassignValidator,
   validate,
   examLifecycleController.reassignSubmission

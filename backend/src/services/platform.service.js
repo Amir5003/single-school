@@ -190,6 +190,106 @@ const rejectRegistration = async (userId, remark) => {
   return user;
 };
 
+// ── Subscription analytics (feature 006) ─────────────────────────────────────
+
+const pricingService = require('./subscription/pricing.service');
+const eventService = require('./subscription/event.service');
+
+const SUB_STATUSES = ['trial', 'trial_limit_reached', 'grace_period', 'active', 'expired', 'cancelled'];
+
+/**
+ * Paginated list of every school with their subscription summary.
+ *
+ * @param {{ page?: number, limit?: number, status?: string }} opts
+ */
+const listSubscriptions = async ({ page = 1, limit = 25, status } = {}) => {
+  const filter = {};
+  if (status && SUB_STATUSES.includes(status)) {
+    filter['subscription.status'] = status;
+  }
+  const skip = (page - 1) * limit;
+  const [schools, total] = await Promise.all([
+    School.find(filter, 'name slug isActive plan subscription createdAt')
+      .sort({ 'subscription.status': 1, name: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    School.countDocuments(filter),
+  ]);
+  return { schools, total, page, pages: Math.ceil(total / limit) };
+};
+
+/**
+ * Aggregate platform-wide subscription metrics.
+ */
+const getSubscriptionAnalytics = async () => {
+  const NOW = new Date();
+  const THREE_DAYS = new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  // Counts per status
+  const statusAgg = await School.aggregate([
+    { $group: { _id: '$subscription.status', count: { $sum: 1 } } },
+  ]);
+  const totals = SUB_STATUSES.reduce((acc, s) => ({ ...acc, [s]: 0 }), {});
+  let totalSchools = 0;
+  for (const row of statusAgg) {
+    if (row._id && SUB_STATUSES.includes(row._id)) {
+      totals[row._id] = row.count;
+    }
+    totalSchools += row.count;
+  }
+
+  // Near-conversion: trial schools that are close to limit OR close to
+  // expiry. Surface for sales follow-up.
+  const nearConversion = await School.find(
+    {
+      'subscription.status': { $in: ['trial', 'trial_limit_reached'] },
+      $or: [
+        { 'subscription.activeStudentCount': { $gte: 40 } },
+        { 'subscription.trialEndsAt': { $lt: THREE_DAYS } },
+      ],
+    },
+    'name slug subscription createdAt'
+  )
+    .sort({ 'subscription.trialEndsAt': 1 })
+    .limit(50)
+    .lean();
+
+  // Estimated MRR from active subscriptions only.
+  const activeSchools = await School.find(
+    { 'subscription.status': 'active' },
+    'subscription.planType subscription.activeStudentCount'
+  ).lean();
+  const estimatedMRR = activeSchools.reduce(
+    (sum, s) =>
+      sum +
+      pricingService.calculateMonthlyAmount({
+        planType: s.subscription?.planType || 'standard',
+        activeStudentCount: s.subscription?.activeStudentCount || 0,
+      }),
+    0
+  );
+
+  return {
+    totals,
+    totalSchools,
+    nearConversion,
+    estimatedMRR,
+    currency: 'INR',
+    generatedAt: NOW,
+  };
+};
+
+/**
+ * Audit trail for a specific school.
+ */
+const getSubscriptionEvents = async (schoolId, limit = 100) => {
+  const school = await School.findById(schoolId, 'name slug').lean();
+  if (!school) throw new ApiError(404, 'School not found');
+  const events = await eventService.listForSchool(schoolId, limit);
+  return { school, events };
+};
+
 module.exports = {
   listSchools,
   getSchoolById,
@@ -199,4 +299,7 @@ module.exports = {
   listPendingRegistrations,
   approveRegistration,
   rejectRegistration,
+  listSubscriptions,
+  getSubscriptionAnalytics,
+  getSubscriptionEvents,
 };

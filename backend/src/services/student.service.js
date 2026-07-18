@@ -10,6 +10,7 @@ const Marks = require('../models/Marks.model');
 const Announcement = require('../models/Announcement.model');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
+const studentCountService = require('./subscription/studentCount.service');
 
 const MONGO_DUPLICATE_KEY = 11000;
 
@@ -65,6 +66,15 @@ const createStudent = async (data, schoolId) => {
     );
 
     await session.commitTransaction();
+
+    // Refresh the school's cached `activeStudentCount` AFTER commit.
+    // Auto-flips the subscription between `trial` ↔ `trial_limit_reached`
+    // if this create crossed the cap.
+    studentCountService.updateCachedCount(schoolId).catch((err) => {
+      logger.error(
+        `[student.service] failed to update activeStudentCount for ${schoolId}: ${err.message}`
+      );
+    });
 
     // Fire-and-forget email — never block the response
     setImmediate(() => {
@@ -225,6 +235,14 @@ const softDeleteStudent = async (id, schoolId) => {
     Student.findByIdAndUpdate(id, { isDeleted: true, deletedAt: new Date() }),
     User.findByIdAndUpdate(student.userId, { isActive: false }),
   ]);
+
+  // Recalculate the cached count. Deletion may free up a trial slot and
+  // flip the subscription back from trial_limit_reached → trial.
+  studentCountService.updateCachedCount(schoolId).catch((err) => {
+    logger.error(
+      `[student.service] failed to update activeStudentCount after delete for ${schoolId}: ${err.message}`
+    );
+  });
 };
 
 // ── Student self-read functions ───────────────────────────────────────────────
