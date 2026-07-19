@@ -147,6 +147,12 @@ const parseWebhook = (req) => {
   return {
     event: body.event || null,
     schoolId: entity.notes?.schoolId || null,
+    // Plan/cycle the order was created for — createOrder stores them in
+    // notes. The webhook handler must activate THIS plan, not whatever the
+    // school is currently on (else an upgrade arriving via webhook first
+    // would re-activate the old plan).
+    planType: entity.notes?.planType || null,
+    billingCycle: entity.notes?.billingCycle || null,
     providerOrderId: entity.order_id || null,
     providerPaymentId: entity.id || null,
     amount: entity.amount ? entity.amount / 100 : 0,

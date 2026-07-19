@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin, setKnownPassword } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +149,8 @@ describe('Student Dashboard — data isolation + read endpoints', () => {
     studentBCookie = bAuth.cookie;
 
     // ── Login as teacher ──
+    // API-created teachers get a random emailed temp password — set a known one
+    await setKnownPassword(TEACHER_DATA.email, TEACHER_DATA.password);
     const tAuth = await loginUser(TEACHER_DATA.email, TEACHER_DATA.password);
     teacherCookie = tAuth.cookie;
   });

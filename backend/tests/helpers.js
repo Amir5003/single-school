@@ -136,6 +136,26 @@ const getAuthCookies = (user) => {
   return `token=${accessToken}`;
 };
 
+/**
+ * Overwrite a user's password with a known value and clear the forced
+ * password change. The admin teacher-creation API ignores any provided
+ * password and emails a random temp one (see teacher.service.js), so tests
+ * that log in as API-created users must reset the password first.
+ * `doc.save()` triggers the pre('save') bcrypt hash.
+ *
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<User>}
+ */
+const setKnownPassword = async (email, password) => {
+  const user = await User.findOne({ email });
+  if (!user) throw new Error(`setKnownPassword: no user with email ${email}`);
+  user.password = password;
+  user.mustChangePassword = false;
+  await user.save();
+  return user;
+};
+
 module.exports = {
   createDirectUser,
   createSchool,
@@ -143,5 +163,6 @@ module.exports = {
   createTeacher,
   createStudent,
   getAuthCookies,
+  setKnownPassword,
 };
 

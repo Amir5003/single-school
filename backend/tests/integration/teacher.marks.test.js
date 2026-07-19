@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin, setKnownPassword } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +93,8 @@ const bootstrapTeacherScenario = async () => {
     .set('Cookie', adminCookie)
     .send({ studentIds: [studentId] });
 
+  // API-created teachers get a random emailed temp password — set a known one
+  await setKnownPassword(TEACHER_DATA.email, TEACHER_DATA.password);
   const { cookie: teacherCookie } = await loginUser(TEACHER_DATA.email, TEACHER_DATA.password);
 
   return { adminCookie, teacherCookie, teacherId, classId, studentId };
@@ -177,6 +179,7 @@ describe('Teacher Marks', () => {
         .post('/api/v1/admin/teachers')
         .set('Cookie', adminCookie)
         .send(TEACHER2_DATA);
+      await setKnownPassword(TEACHER2_DATA.email, TEACHER2_DATA.password);
       const { cookie: t2Cookie } = await loginUser(TEACHER2_DATA.email, TEACHER2_DATA.password);
 
       const res = await request(app)
@@ -242,6 +245,7 @@ describe('Teacher Announcements', () => {
       .post('/api/v1/admin/teachers')
       .set('Cookie', adminCookie)
       .send(TEACHER2_DATA);
+    await setKnownPassword(TEACHER2_DATA.email, TEACHER2_DATA.password);
     const { cookie } = await loginUser(TEACHER2_DATA.email, TEACHER2_DATA.password);
     teacher2Cookie = cookie;
   });

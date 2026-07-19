@@ -21,6 +21,14 @@ beforeAll(async () => {
   const uri = mongoReplSet.getUri();
   process.env.MONGO_URI = uri;
   await mongoose.connect(uri);
+
+  // Pre-create every registered model's collection. Multi-document
+  // transactions (e.g. student onboarding) cannot create collections
+  // implicitly — the first write would abort with a transient
+  // "catalog changes" error on a fresh in-memory replica set.
+  await Promise.all(
+    Object.values(mongoose.models).map((m) => m.createCollection().catch(() => {}))
+  );
 }, 60000); // allow extra time for replica set initialisation
 
 afterAll(async () => {

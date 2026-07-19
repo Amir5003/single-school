@@ -33,7 +33,8 @@ const examsFeature = checkFeatureAccess(FEATURES.EXAMS_RESULTS);
 router.get('/profile',       getProfile);
 router.get('/timetable',     getTimetable);
 router.get('/attendance',    getAttendance);
-router.get('/marks',         getMarks);
+// Marks are part of the exam/result module — gated like the results routes.
+router.get('/marks',         examsFeature, getMarks);
 router.get('/announcements', getAnnouncements);
 router.get('/fees', feeController.getMyFees);
 router.get('/homework', homeworkController.getStudentHomework);

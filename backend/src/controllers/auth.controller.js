@@ -37,13 +37,22 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const { user, accessToken, refreshToken } = await authService.login(email, password);
+    const { user, accessToken, refreshToken, entitlements } = await authService.login(
+      email,
+      password
+    );
 
     return res
       .status(200)
       .cookie('token', accessToken, ACCESS_COOKIE_OPTIONS)
       .cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
-      .json(new ApiResponse(200, { user, accessToken, refreshToken }, 'Login successful'));
+      .json(
+        new ApiResponse(
+          200,
+          { user, accessToken, refreshToken, entitlements },
+          'Login successful'
+        )
+      );
   } catch (err) {
     return next(err);
   }
@@ -81,10 +90,10 @@ const logout = async (req, res, next) => {
 
 const getMe = async (req, res, next) => {
   try {
-    const user = await authService.getMe(req.user._id);
+    const { user, entitlements } = await authService.getMe(req.user._id);
     return res
       .status(200)
-      .json(new ApiResponse(200, { user }, 'User retrieved'));
+      .json(new ApiResponse(200, { user, entitlements }, 'User retrieved'));
   } catch (err) {
     return next(err);
   }

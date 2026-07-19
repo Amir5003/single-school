@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { selectSchoolSlug } from '../../redux/slices/authSlice';
+import { selectSchoolSlug, selectEntitledFeatures } from '../../redux/slices/authSlice';
 import { selectSchoolName, selectSchoolBranding } from '../../redux/slices/schoolSlice';
 import { selectFeatures } from '../../redux/slices/subscriptionSlice';
 import { FEATURES } from '../../utils/features';
@@ -13,18 +13,21 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
   const schoolName = useSelector(selectSchoolName);
   const branding   = useSelector(selectSchoolBranding);
   const features   = useSelector(selectFeatures);
+  const entitledFeatures = useSelector(selectEntitledFeatures);
   const base = schoolSlug ? `/schools/${schoolSlug}` : '';
 
-  // `requires` is checked against the school's entitled features list. For
-  // the school-admin role we hard-rely on the subscription slice being
-  // hydrated; for teachers/students we *fail open* (show the link) if the
-  // features array is empty, because non-admin roles don't fetch the
-  // subscription — instead the backend's checkFeatureAccess middleware
-  // will reject and the page will render an upgrade hint.
+  // `requires` is checked against the school's entitled features list.
+  //  - school-admin: hard check on the subscription slice (hydrated by
+  //    useSubscription on admin pages).
+  //  - other roles: check the entitlements delivered in the auth payload
+  //    (login + /auth/me refresh). Fail open ONLY when entitlements are
+  //    unknown (legacy school / stale session) — the backend's
+  //    checkFeatureAccess middleware remains the enforcement layer.
   const hasFeature = (feature) => {
     if (!feature) return true;
     if (role === 'school-admin') return features.includes(feature);
-    return features.length === 0 ? true : features.includes(feature);
+    if (entitledFeatures === undefined) return true;
+    return entitledFeatures.includes(feature);
   };
 
   const NAV_ITEMS = {
@@ -43,7 +46,7 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
     teacher: [
       { label: 'Dashboard',      to: `${base}/teacher/dashboard` },
       { label: 'Attendance',     to: `${base}/teacher/attendance` },
-      { label: 'Marks',          to: `${base}/teacher/marks` },
+      { label: 'Marks',          to: `${base}/teacher/marks`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'My Exams',       to: `${base}/teacher/my-exams`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/teacher/announcements` },
     ],
@@ -52,7 +55,7 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
       { label: 'Profile',        to: `${base}/student/profile` },
       { label: 'Timetable',      to: `${base}/student/timetable` },
       { label: 'Attendance',     to: `${base}/student/attendance` },
-      { label: 'Marks',          to: `${base}/student/marks` },
+      { label: 'Marks',          to: `${base}/student/marks`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'My Results',     to: `${base}/student/results`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/student/announcements` },
     ],

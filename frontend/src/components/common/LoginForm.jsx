@@ -47,11 +47,19 @@ export default function LoginForm({ onSuccess, onCancel }) {
 
     try {
       const data = await loginUser({ email, password });
-      const { user, accessToken, refreshToken } = data.data;
+      const { user, accessToken, refreshToken, entitlements } = data.data;
       setTokens({ accessToken, refreshToken });
       const resolvedSlug = user.schoolId?.slug ?? schoolSlug ?? null;
       const resolvedId   = user.schoolId?._id  ?? user.schoolId ?? null;
-      dispatch(setCredentials({ user, role: user.role, schoolSlug: resolvedSlug, schoolId: resolvedId }));
+      dispatch(
+        setCredentials({
+          user,
+          role: user.role,
+          schoolSlug: resolvedSlug,
+          schoolId: resolvedId,
+          entitlements: entitlements ?? null,
+        })
+      );
 
       // T049 — persist slug for Home.jsx restoration
       if (resolvedSlug) {

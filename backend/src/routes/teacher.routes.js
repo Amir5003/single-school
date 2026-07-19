@@ -43,9 +43,9 @@ router.get('/classes/:classId/students', getClassStudents);
 router.post('/attendance', teacherWrite, markAttendance);
 router.get('/attendance', getAttendance);
 
-// ── Marks ─────────────────────────────────────────────────────────────────────
-router.post('/marks', teacherWrite, saveMark);
-router.get('/marks', getMarks);
+// ── Marks — part of the exam/result module, gated like the exam routes ───────
+router.post('/marks', teacherWrite, examsFeature, saveMark);
+router.get('/marks', examsFeature, getMarks);
 
 // ── Exam subject submissions (005 flow) — gated by EXAMS_RESULTS feature ─────
 router.get('/exams', examsFeature, subjectSubmissionController.listMyExams);

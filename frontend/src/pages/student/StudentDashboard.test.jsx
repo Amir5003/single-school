@@ -47,8 +47,10 @@ describe('StudentDashboard', () => {
 
   it('renders the dashboard heading', async () => {
     renderWithProviders(<StudentDashboard />, { preloadedState: authState });
-    // Initially some heading is rendered
-    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
+    // Greeting banner: "Good morning/afternoon/evening, <name> 👋"
+    expect(
+      screen.getByText(/good (morning|afternoon|evening)/i)
+    ).toBeInTheDocument();
   });
 
   it('shows 4 summary card labels', async () => {

@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { createDirectUser, createSchool, createSchoolAdmin } = require('../helpers');
+const { createDirectUser, createSchool, createSchoolAdmin, setKnownPassword } = require('../helpers');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +79,8 @@ const getAdminCookie = async () => {
 };
 
 const getTeacherCookie = async (email, password) => {
+  // API-created teachers get a random emailed temp password — set a known one
+  await setKnownPassword(email, password);
   const { cookie } = await loginUser(email, password);
   return cookie;
 };

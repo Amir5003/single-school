@@ -19,6 +19,10 @@ const initialState = persisted || {
   isAuthenticated: false,
   schoolId: null,
   schoolSlug: null,
+  // School feature entitlements from the auth payload:
+  // { status, planType, features: [] } — null means "unknown" (legacy school
+  // or older session), in which case gates fail open and the backend decides.
+  entitlements: null,
 };
 
 const authSlice = createSlice({
@@ -31,6 +35,10 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.schoolId = action.payload.schoolId ?? null;
       state.schoolSlug = action.payload.schoolSlug ?? null;
+      state.entitlements = action.payload.entitlements ?? null;
+    },
+    setEntitlements: (state, action) => {
+      state.entitlements = action.payload ?? null;
     },
     clearCredentials: (state) => {
       state.user = null;
@@ -38,11 +46,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.schoolId = null;
       state.schoolSlug = null;
+      state.entitlements = null;
     },
   },
 });
 
-export const { setCredentials, clearCredentials } = authSlice.actions;
+export const { setCredentials, setEntitlements, clearCredentials } = authSlice.actions;
 
 // Selectors
 export const selectUser = (state) => state.auth.user;
@@ -50,5 +59,8 @@ export const selectRole = (state) => state.auth.role;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectSchoolId = (state) => state.auth.schoolId;
 export const selectSchoolSlug = (state) => state.auth.schoolSlug;
+// undefined = unknown (fail open); array = authoritative feature list
+export const selectEntitledFeatures = (state) =>
+  state.auth.entitlements?.features ?? undefined;
 
 export default authSlice.reducer;

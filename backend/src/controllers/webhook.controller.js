@@ -56,7 +56,13 @@ const handlePaymentWebhook = async (req, res, next) => {
     const isFailure = event.startsWith('payment.failed') || payload.status === 'failed';
 
     if (isSuccess) {
-      const planType = school.subscription?.planType || 'standard';
+      // Prefer the plan/cycle the order was created for (from order notes);
+      // fall back to the school's current subscription only for legacy
+      // webhooks that predate notes.
+      const planType =
+        payload.planType || school.subscription?.planType || 'standard';
+      const billingCycle =
+        payload.billingCycle || school.subscription?.billingCycle || 'monthly';
 
       await subscriptionService.event.logEvent(school._id, 'payment_success', {
         providerOrderId: payload.providerOrderId,
@@ -64,12 +70,14 @@ const handlePaymentWebhook = async (req, res, next) => {
         amount: payload.amount,
         currency: 'INR',
         planType,
+        billingCycle,
         activeStudentCount: school.subscription?.activeStudentCount || 0,
         source: 'webhook',
       });
 
       await subscriptionService.lifecycle.transitionTo(school, 'active', {
         planType,
+        billingCycle,
         providerPaymentId: payload.providerPaymentId,
         paymentProvider: subscriptionService.paymentProvider.name,
         source: 'webhook',

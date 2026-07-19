@@ -36,9 +36,13 @@ const verifyPayment = async ({ orderId, providerPaymentId }) => ({
 
 const parseWebhook = (req) => {
   const body = req.body || {};
+  const notes = body.payload?.payment?.entity?.notes || {};
   return {
     event: body.event || 'payment.captured',
-    schoolId: body.schoolId || body.payload?.payment?.entity?.notes?.schoolId || null,
+    schoolId: body.schoolId || notes.schoolId || null,
+    // Mirror razorpay.provider: surface the plan/cycle the order was for.
+    planType: body.planType || notes.planType || null,
+    billingCycle: body.billingCycle || notes.billingCycle || null,
     providerOrderId: body.payload?.payment?.entity?.order_id || null,
     providerPaymentId: body.payload?.payment?.entity?.id || id('pay'),
     amount: body.payload?.payment?.entity?.amount

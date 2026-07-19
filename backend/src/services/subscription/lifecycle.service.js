@@ -136,18 +136,29 @@ const transitionTo = async (school, nextStatus, metadata = {}) => {
   }
 
   const currentStatus = school.subscription.status;
-  if (currentStatus === nextStatus) {
-    // Idempotent no-op — still update fields if the caller passed any
-    // payment metadata; but skip the event log to keep replays quiet.
+
+  // active → active with plan/payment metadata is a PAID REFRESH (upgrade,
+  // cycle change, or renewal while still active). It must fall through and
+  // apply the new plan/cycle/window — the old guard returned early here and
+  // silently discarded paid upgrades. Metadata-less same-status calls remain
+  // idempotent no-ops (quiet replays).
+  const isPaidActiveRefresh =
+    currentStatus === 'active' &&
+    nextStatus === 'active' &&
+    Boolean(metadata.planType || metadata.billingCycle || metadata.providerPaymentId);
+
+  if (currentStatus === nextStatus && !isPaidActiveRefresh) {
     return school;
   }
 
-  const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
-  if (!allowed.includes(nextStatus)) {
-    throw new ApiError(
-      409,
-      `Illegal subscription transition: ${currentStatus} → ${nextStatus}`
-    );
+  if (!isPaidActiveRefresh) {
+    const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+    if (!allowed.includes(nextStatus)) {
+      throw new ApiError(
+        409,
+        `Illegal subscription transition: ${currentStatus} → ${nextStatus}`
+      );
+    }
   }
 
   const update = { 'subscription.status': nextStatus };
@@ -197,6 +208,11 @@ const transitionTo = async (school, nextStatus, metadata = {}) => {
       metadata.planType = planType;
       metadata.billingCycle = billingCycle;
       metadata.amount = planAmount;
+      if (isPaidActiveRefresh) {
+        metadata.previousPlan = school.subscription.planType;
+        metadata.previousCycle = school.subscription.billingCycle;
+        metadata.type = 'paid_refresh';
+      }
       break;
     }
 
@@ -228,12 +244,16 @@ const transitionTo = async (school, nextStatus, metadata = {}) => {
 
   await eventService.logEvent(
     school._id,
-    EVENT_FOR_STATUS[nextStatus] || 'plan_changed',
+    isPaidActiveRefresh
+      ? 'plan_changed'
+      : EVENT_FOR_STATUS[nextStatus] || 'plan_changed',
     metadata
   );
 
   logger.info(
-    `[subscription.lifecycle] School ${school._id}: ${currentStatus} → ${nextStatus}`
+    isPaidActiveRefresh
+      ? `[subscription.lifecycle] School ${school._id}: plan refreshed ${metadata.previousPlan}/${metadata.previousCycle} → ${metadata.planType}/${metadata.billingCycle}`
+      : `[subscription.lifecycle] School ${school._id}: ${currentStatus} → ${nextStatus}`
   );
 
   return updated;

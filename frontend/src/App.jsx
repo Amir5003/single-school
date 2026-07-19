@@ -93,8 +93,22 @@ function StudentRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="timetable" element={<StudentTimetablePage />} />
         <Route path="attendance" element={<StudentAttendancePage />} />
-        <Route path="marks" element={<StudentMarksPage />} />
-        <Route path="results" element={<ResultsPage />} />
+        <Route
+          path="marks"
+          element={
+            <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="student">
+              <StudentMarksPage />
+            </FeatureGate>
+          }
+        />
+        <Route
+          path="results"
+          element={
+            <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="student">
+              <ResultsPage />
+            </FeatureGate>
+          }
+        />
         <Route path="announcements" element={<StudentAnnouncementsPage />} />
       </Routes>
     </AnimatePresence>
@@ -199,9 +213,30 @@ export default function App() {
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<TeacherDashboard />} />
                     <Route path="attendance" element={<AttendancePage />} />
-                    <Route path="marks" element={<MarksPage />} />
-                    <Route path="my-exams" element={<MyExamsPage />} />
-                    <Route path="submissions/:submissionId" element={<SubmissionEntryPage />} />
+                    <Route
+                      path="marks"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="teacher">
+                          <MarksPage />
+                        </FeatureGate>
+                      }
+                    />
+                    <Route
+                      path="my-exams"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="teacher">
+                          <MyExamsPage />
+                        </FeatureGate>
+                      }
+                    />
+                    <Route
+                      path="submissions/:submissionId"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="teacher">
+                          <SubmissionEntryPage />
+                        </FeatureGate>
+                      }
+                    />
                     <Route path="announcements" element={<AnnouncementsPage />} />
                   </Routes>
                 </ErrorBoundary>
