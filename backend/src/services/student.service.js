@@ -104,13 +104,26 @@ const createStudent = async (data, schoolId) => {
 /**
  * List students with optional search and pagination, scoped to a school.
  *
- * @param {{ page?: number, limit?: number, search?: string }} options
+ * @param {{ page?: number, limit?: number, search?: string, classId?: string }} options
+ *   classId accepts a Class _id, or the literal 'unassigned' for students with
+ *   no class. An unrecognised value is ignored rather than throwing.
  * @param {string} schoolId
  * @returns {Promise<{ students, total, page, limit, totalPages }>}
  */
-const listStudents = async ({ page = 1, limit = 20, search = '' } = {}, schoolId) => {
+const listStudents = async (
+  { page = 1, limit = 20, search = '', classId = '' } = {},
+  schoolId
+) => {
   const skip = (Number(page) - 1) * Number(limit);
   const filter = { schoolId, isDeleted: false };
+
+  // Class filter must run server-side: the list is paginated, so filtering on
+  // the client would only ever narrow the current page.
+  if (classId === 'unassigned') {
+    filter.classId = null;
+  } else if (classId && mongoose.isValidObjectId(classId)) {
+    filter.classId = new mongoose.Types.ObjectId(classId);
+  }
 
   if (search && search.trim()) {
     const regex = new RegExp(search.trim(), 'i');

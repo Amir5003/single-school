@@ -187,6 +187,75 @@ describe('GET /api/v1/admin/students — list', () => {
     expect(res.body.data.students).toHaveLength(1);
     expect(res.body.data.students[0].enrollmentId).toBe('STU-001');
   });
+
+  // ── classId filter ─────────────────────────────────────────────────────────
+  // Filtering runs server-side because the list is paginated.
+
+  /**
+   * Create a class with STU-001 assigned to it and STU-002 left unassigned.
+   * POST /students ignores a classId in the body, so the assignment goes
+   * through the dedicated assign-students endpoint.
+   */
+  const seedClassAndStudents = async (ck) => {
+    const clsRes = await request(app)
+      .post('/api/v1/admin/classes')
+      .set('Cookie', ck)
+      .send({ name: 'Grade 5', grade: '5', section: 'A', academicYear: '2024-2025' });
+    const classId = clsRes.body.data.class._id;
+
+    const assigned = await createStudent(ck, STUDENT_BASE);
+    await createStudent(ck, {
+      ...STUDENT_BASE,
+      name: 'Bob Jones',
+      email: 'bob@school.test',
+      enrollmentId: 'STU-002',
+    });
+
+    await request(app)
+      .post(`/api/v1/admin/classes/${classId}/assign-students`)
+      .set('Cookie', ck)
+      .send({ studentIds: [assigned.body.data.student._id] });
+
+    return classId;
+  };
+
+  it('200 — classId returns only students in that class', async () => {
+    const classId = await seedClassAndStudents(cookie);
+
+    const res = await getStudents(cookie, `?classId=${classId}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.students).toHaveLength(1);
+    expect(res.body.data.students[0].enrollmentId).toBe('STU-001');
+    expect(res.body.data.total).toBe(1);
+  });
+
+  it("200 — classId=unassigned returns only students with no class", async () => {
+    await seedClassAndStudents(cookie);
+
+    const res = await getStudents(cookie, '?classId=unassigned');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.students).toHaveLength(1);
+    expect(res.body.data.students[0].enrollmentId).toBe('STU-002');
+  });
+
+  it('200 — a malformed classId is ignored rather than erroring', async () => {
+    await seedClassAndStudents(cookie);
+
+    const res = await getStudents(cookie, '?classId=not-an-object-id');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.total).toBe(2);
+  });
+
+  it('200 — classId combines with search', async () => {
+    const classId = await seedClassAndStudents(cookie);
+
+    const match = await getStudents(cookie, `?classId=${classId}&search=Alice`);
+    expect(match.body.data.students).toHaveLength(1);
+
+    // Bob is not in the class, so the two filters together exclude him
+    const noMatch = await getStudents(cookie, `?classId=${classId}&search=Bob`);
+    expect(noMatch.body.data.students).toHaveLength(0);
+  });
 });
 
 describe('GET /api/v1/admin/students/:id — get by id', () => {

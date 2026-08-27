@@ -46,7 +46,9 @@ export default function Layout({ role, children }) {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        {/* min-w-0: without it this flex item cannot shrink below its content's
+            min-content width, so a wide row pushes the whole page sideways. */}
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>

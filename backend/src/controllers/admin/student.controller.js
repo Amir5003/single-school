@@ -19,12 +19,16 @@ const createStudent = async (req, res, next) => {
 /**
  * GET /api/v1/admin/students
  * List students with optional pagination and search.
- * Query params: page, limit, search
+ * Query params: page, limit, search, classId ('unassigned' for students with
+ * no class, or a Class _id)
  */
 const listStudents = async (req, res, next) => {
   try {
-    const { page, limit, search } = req.query;
-    const result = await studentService.listStudents({ page, limit, search }, req.school._id);
+    const { page, limit, search, classId } = req.query;
+    const result = await studentService.listStudents(
+      { page, limit, search, classId },
+      req.school._id
+    );
     res.json(new ApiResponse(200, result, 'Students retrieved successfully'));
   } catch (err) {
     next(err);
