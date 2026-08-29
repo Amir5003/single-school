@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation, useParams, Outlet, useNavigate } 
 import { AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
+import { Analytics } from '@vercel/analytics/react';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginModal from './components/common/LoginModal';
@@ -119,6 +120,7 @@ export default function App() {
   return (
     <>
       <LoginModal />
+      <Analytics />
       <Routes>
         {/* Public — outside school slug */}
         <Route path="/" element={<Home />} />
