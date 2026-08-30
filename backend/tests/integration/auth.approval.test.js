@@ -50,15 +50,21 @@ const loginUser = async (email, password) => {
   return { res, cookie: res.headers['set-cookie'] };
 };
 
+// The admin has to belong to the same school as the users it manages: every
+// /admin/users route is scoped to req.school, so an admin from a freshly
+// created second school correctly sees no pending users and 404s on
+// approve/reject.
 const getAdminCookie = async () => {
-  const school = await createSchool();
-  await createSchoolAdmin(school._id, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
+  await createSchoolAdmin(testSchoolId, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name });
   const { cookie } = await loginUser(ADMIN.email, ADMIN.password);
   return cookie;
 };
 
-beforeAll(async () => {
-  const school = await createSchool({ name: 'Approval Test School', slug: `approval-test-${Date.now()}` });
+// setup.js wipes every collection after each test, so the school is recreated
+// per test — created once in beforeAll it would exist only for the first one,
+// leaving every later test pointing at a deleted school.
+beforeEach(async () => {
+  const school = await createSchool({ name: 'Approval Test School' });
   testSchoolId = school._id.toString();
 });
 

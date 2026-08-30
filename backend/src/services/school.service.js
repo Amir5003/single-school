@@ -13,6 +13,9 @@ const getSchoolConfigBySlug = async (slug) => {
     name: school.name,
     slug: school.slug,
     branding: school.branding || {},
+    // A school stays inactive until a super-admin approves it. The landing
+    // page needs this to avoid offering a login that can only ever 403.
+    isActive: Boolean(school.isActive),
   };
 };
 

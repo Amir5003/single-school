@@ -106,9 +106,17 @@ describe('POST /api/v1/admin/teachers — create', () => {
     );
   });
 
-  it('422 — missing employeeId', async () => {
+  // employeeId is optional by design: the validator marks it optional and
+  // teacher.service generates a unique TCH-nnn when the admin omits it.
+  it('201 — omitted employeeId is auto-generated', async () => {
     const { employeeId: _e, ...noId } = TEACHER_BASE;
     const res = await createTeacher(cookie, noId);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.teacher.employeeId).toBe('TCH-001');
+  });
+
+  it('422 — malformed employeeId is rejected', async () => {
+    const res = await createTeacher(cookie, { ...TEACHER_BASE, employeeId: 'tch 001!' });
     expect(res.statusCode).toBe(422);
     expect(res.body.errors).toEqual(
       expect.arrayContaining([expect.objectContaining({ field: 'employeeId' })])
