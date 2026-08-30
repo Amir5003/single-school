@@ -25,5 +25,9 @@ Thumbs.db
 # Claude agent runtime files
 .claude/
 
+# Speckit local workflow state (per-machine; carries a telemetry id)
+.spec-context.json
+**/.spec-context.json
+
 # Coverage
 coverage/
