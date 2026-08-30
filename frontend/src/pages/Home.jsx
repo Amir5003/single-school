@@ -74,11 +74,11 @@ export default function Home() {
             <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
               S
             </span>
-            <span className="font-semibold text-gray-900 text-sm tracking-tight">
+            <span className="font-semibold text-gray-900 text-sm tracking-tight hidden min-[400px]:inline">
               School&nbsp;Management
             </span>
           </div>
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-2 sm:gap-3">
             {isAuthenticated ? (
               <>
                 <span className="text-sm text-gray-600 hidden sm:block">
@@ -89,13 +89,13 @@ export default function Home() {
                 </span>
                 <Link
                   to={dashboardPath}
-                  className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                  className="px-3 sm:px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors whitespace-nowrap"
                 >
                   Dashboard
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-colors"
+                  className="px-3 sm:px-4 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-colors whitespace-nowrap"
                 >
                   Sign out
                 </button>
@@ -105,20 +105,23 @@ export default function Home() {
                 {lastSlug && (
                   <Link
                     to={`/schools/${lastSlug}`}
-                    className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                    title="Return to your school portal"
+                    className="px-3 sm:px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors whitespace-nowrap"
                   >
-                    Return to school portal
+                    {/* Full sentence needs room the phone nav does not have */}
+                    <span className="sm:hidden">My school</span>
+                    <span className="hidden sm:inline">Return to school portal</span>
                   </Link>
                 )}
                 <Link
                   to="/register"
-                  className="px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
+                  className="px-3 sm:px-4 py-1.5 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors whitespace-nowrap"
                 >
                   Register
                 </Link>
                 <Link
                   to="/login"
-                  className="px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+                  className="px-3 sm:px-4 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
                 >
                   Log in
                 </Link>

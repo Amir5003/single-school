@@ -41,90 +41,200 @@ const formatDate = (d) => {
   });
 };
 
+// ── Layout constants ─────────────────────────────────────────────────────────
+const MARGIN_X = 40;
+const BAND_HEIGHT = 96;
+const INK = '#111827';
+const MUTED = '#6b7280';
+const HAIRLINE = '#e5e7eb';
+const PANEL = '#f9fafb';
+
+/**
+ * Draw the coloured school-identity band across the top of the page.
+ * Returns the y coordinate directly below it.
+ */
+function drawHeader(doc, school, logoData, pageWidth) {
+  doc.setFillColor(school.primaryColor || '#1a73e8');
+  doc.rect(0, 0, pageWidth, BAND_HEIGHT, 'F');
+
+  let textX = MARGIN_X;
+  if (logoData) {
+    try {
+      doc.addImage(logoData, 'PNG', MARGIN_X, 25, 46, 46);
+      textX = MARGIN_X + 60;
+    } catch {
+      // fall through, render text-only
+    }
+  }
+
+  // Address and phone share a line — three stacked meta lines crowd the band.
+  const metaLines = [];
+  if (school.tagline) metaLines.push(school.tagline);
+  const contact = [school.address, school.contactNumber && `Phone: ${school.contactNumber}`]
+    .filter(Boolean)
+    .join('  ·  ');
+  if (contact) metaLines.push(contact);
+
+  const maxTextWidth = pageWidth - textX - MARGIN_X;
+
+  doc.setTextColor('#ffffff');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  const nameLines = doc.splitTextToSize(school.name || 'School', maxTextWidth).slice(0, 2);
+
+  // Centre the whole identity block vertically inside the band.
+  const blockHeight = nameLines.length * 20 + metaLines.length * 12;
+  let y = (BAND_HEIGHT - blockHeight) / 2 + 14;
+
+  nameLines.forEach((line) => {
+    doc.text(line, textX, y);
+    y += 20;
+  });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  metaLines.forEach((line) => {
+    doc.text(doc.splitTextToSize(line, maxTextWidth)[0], textX, y);
+    y += 12;
+  });
+
+  return BAND_HEIGHT;
+}
+
+/**
+ * Student details panel — a 2x2 grid of label/value pairs. Both columns start
+ * at a fixed x, so every value lines up regardless of label length.
+ */
+function drawDetailsPanel(doc, payload, pageWidth, top) {
+  const width = pageWidth - MARGIN_X * 2;
+  const height = 64;
+  const padX = 14;
+  const colWidth = width / 2;
+
+  doc.setFillColor(PANEL);
+  doc.setDrawColor(HAIRLINE);
+  doc.roundedRect(MARGIN_X, top, width, height, 6, 6, 'FD');
+
+  const cells = [
+    ['STUDENT', payload.student.name || '—'],
+    ['CLASS', payload.student.class || '—'],
+    ['ENROLLMENT ID', payload.student.enrollmentId || '—'],
+    ['RANK', payload.rank != null ? `#${payload.rank}` : '—'],
+  ];
+
+  cells.forEach(([label, value], i) => {
+    const x = MARGIN_X + padX + (i % 2) * colWidth;
+    const y = top + 22 + Math.floor(i / 2) * 28;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(MUTED);
+    doc.text(label, x, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(INK);
+    doc.text(
+      doc.splitTextToSize(String(value), colWidth - padX * 2)[0],
+      x,
+      y + 13
+    );
+  });
+
+  return top + height;
+}
+
+/**
+ * Result summary — a right-aligned box with labels left, values right, so the
+ * two rows read as a pair instead of drifting apart.
+ */
+function drawSummary(doc, payload, pageWidth, top) {
+  const width = 250;
+  const height = 60;
+  const x = pageWidth - MARGIN_X - width;
+  const padX = 14;
+
+  doc.setFillColor(PANEL);
+  doc.setDrawColor(HAIRLINE);
+  doc.roundedRect(x, top, width, height, 6, 6, 'FD');
+
+  const rows = [
+    ['Overall Percentage', `${payload.percentage}%`, INK],
+    ['Overall Result', payload.passed ? 'PASS' : 'FAIL', payload.passed ? '#15803d' : '#b91c1c'],
+  ];
+
+  rows.forEach(([label, value, colour], i) => {
+    const y = top + 24 + i * 22;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(MUTED);
+    doc.text(label, x + padX, y);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(colour);
+    doc.text(String(value), x + width - padX, y, { align: 'right' });
+  });
+
+  return top + height;
+}
+
+function drawFooter(doc, payload, pageWidth) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const y = pageHeight - 34;
+
+  doc.setDrawColor(HAIRLINE);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN_X, y - 12, pageWidth - MARGIN_X, y - 12);
+
+  doc.setTextColor(MUTED);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'italic');
+  doc.text(`Generated on ${formatDate(payload.generatedAt || new Date())}`, MARGIN_X, y);
+  doc.text('This is a system-generated report card.', pageWidth - MARGIN_X, y, {
+    align: 'right',
+  });
+}
+
 /**
  * Generate a single-page report card PDF from the backend's payload.
  * Returns the jsPDF document (caller is responsible for `.save(filename)`).
  */
 export async function generateReportCard(payload) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-
   const pageWidth = doc.internal.pageSize.getWidth();
-  const marginX = 40;
 
-  // Try to embed school logo
   const logoData = await loadImageAsDataUrl(payload.school.logoUrl);
 
-  // Header band — school identity
-  doc.setFillColor(payload.school.primaryColor || '#1a73e8');
-  doc.rect(0, 0, pageWidth, 90, 'F');
-
-  let textStartX = marginX;
-  if (logoData) {
-    try {
-      doc.addImage(logoData, 'PNG', marginX, 20, 50, 50);
-      textStartX = marginX + 65;
-    } catch {
-      // fall through, render text-only
-    }
-  }
-
-  doc.setTextColor('#ffffff');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.text(payload.school.name || 'School', textStartX, 40);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  if (payload.school.tagline) {
-    doc.text(payload.school.tagline, textStartX, 55);
-  }
-  if (payload.school.address) {
-    doc.text(payload.school.address, textStartX, 68);
-  }
-  if (payload.school.contactNumber) {
-    doc.text(`Phone: ${payload.school.contactNumber}`, textStartX, 80);
-  }
+  const headerBottom = drawHeader(doc, payload.school, logoData, pageWidth);
 
   // Report-card title
-  doc.setTextColor('#000000');
+  doc.setTextColor(INK);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('REPORT CARD', pageWidth / 2, 120, { align: 'center' });
+  doc.text('REPORT CARD', pageWidth / 2, headerBottom + 34, { align: 'center' });
 
   // Exam meta
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
+  doc.setTextColor(MUTED);
   doc.text(
     `${payload.exam.name}  —  ${payload.exam.term}, ${payload.exam.year}`,
     pageWidth / 2,
-    138,
+    headerBottom + 52,
     { align: 'center' }
   );
 
-  // Student details block
-  const detailsY = 165;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Student:', marginX, detailsY);
-  doc.text('Enrollment ID:', marginX, detailsY + 16);
-  doc.text('Class:', marginX, detailsY + 32);
+  const detailsBottom = drawDetailsPanel(doc, payload, pageWidth, headerBottom + 70);
 
-  doc.setFont('helvetica', 'normal');
-  doc.text(payload.student.name || '', marginX + 90, detailsY);
-  doc.text(payload.student.enrollmentId || '', marginX + 90, detailsY + 16);
-  doc.text(payload.student.class || '—', marginX + 90, detailsY + 32);
-
-  if (payload.rank != null) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Rank:', pageWidth - marginX - 90, detailsY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`#${payload.rank}`, pageWidth - marginX - 50, detailsY);
-  }
-
-  // Marks table
+  // Marks table. Column alignment is applied in didParseCell so the header,
+  // body and total row of a column always share one alignment — setting it
+  // through columnStyles alone leaves headers hanging off their numbers.
   autoTable(doc, {
-    startY: detailsY + 55,
-    margin: { left: marginX, right: marginX },
-    head: [['Subject', 'Marks Obtained', 'Max Marks', 'Pass Mark', 'Status']],
+    startY: detailsBottom + 24,
+    margin: { left: MARGIN_X, right: MARGIN_X, bottom: 60 },
+    head: [['Subject', 'Marks Obtained', 'Max Marks', 'Pass Mark', 'Result']],
     body: payload.marks.map((m) => [
       m.subject,
       String(m.marksObtained),
@@ -141,50 +251,36 @@ export async function generateReportCard(payload) {
         payload.passed ? 'Pass' : 'Fail',
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 10, halign: 'left' },
+    styles: {
+      font: 'helvetica',
+      fontSize: 10,
+      cellPadding: { top: 6, right: 8, bottom: 6, left: 8 },
+      lineColor: HAIRLINE,
+      lineWidth: 0.5,
+      textColor: INK,
+    },
     headStyles: {
       fillColor: payload.school.primaryColor || '#1a73e8',
       textColor: '#ffffff',
       fontStyle: 'bold',
+      fontSize: 9.5,
     },
-    footStyles: { fillColor: '#f3f4f6', textColor: '#111827', fontStyle: 'bold' },
+    footStyles: { fillColor: '#f3f4f6', textColor: INK, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: '#fbfbfd' },
     columnStyles: {
-      1: { halign: 'right' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'center' },
+      0: { cellWidth: 'auto' },
+      1: { cellWidth: 95 },
+      2: { cellWidth: 72 },
+      3: { cellWidth: 72 },
+      4: { cellWidth: 60 },
     },
+    didParseCell: (data) => {
+      data.cell.styles.halign = data.column.index === 0 ? 'left' : 'center';
+    },
+    didDrawPage: () => drawFooter(doc, payload, pageWidth),
   });
 
-  // Summary box below table
-  const finalY = doc.lastAutoTable.finalY + 25;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('Overall Percentage:', marginX, finalY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${payload.percentage}%`, marginX + 160, finalY);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Overall Result:', marginX, finalY + 18);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(payload.passed ? '#15803d' : '#b91c1c');
-  doc.text(payload.passed ? 'PASS' : 'FAIL', marginX + 160, finalY + 18);
-
-  // Footer
-  doc.setTextColor('#6b7280');
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.text(
-    `Generated on ${formatDate(payload.generatedAt || new Date())}`,
-    marginX,
-    doc.internal.pageSize.getHeight() - 30
-  );
-  doc.text(
-    'This is a system-generated report card.',
-    pageWidth - marginX,
-    doc.internal.pageSize.getHeight() - 30,
-    { align: 'right' }
-  );
+  drawSummary(doc, payload, pageWidth, doc.lastAutoTable.finalY + 22);
 
   return doc;
 }

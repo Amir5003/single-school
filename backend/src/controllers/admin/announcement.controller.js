@@ -9,7 +9,13 @@ const announcementService = require('../../services/announcement.service');
  */
 const listAnnouncements = async (req, res, next) => {
   try {
-    const announcements = await announcementService.getAllActiveAnnouncements(200, req.school._id);
+    // Admins manage announcements from this list, so expired ones stay visible
+    // here — they are only hidden from student/parent and public views.
+    const announcements = await announcementService.getAllActiveAnnouncements(
+      200,
+      req.school._id,
+      { includeExpired: true }
+    );
     res.json(
       new ApiResponse(200, { announcements }, 'Announcements retrieved successfully')
     );

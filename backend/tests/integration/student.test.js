@@ -413,6 +413,27 @@ describe('Student Dashboard — data isolation + read endpoints', () => {
       });
     });
 
+    it('excludes announcements whose visibleUntil has passed', async () => {
+      await request(app)
+        .post('/api/v1/teacher/announcements')
+        .set('Cookie', teacherCookie)
+        .send({ title: 'Expired Notice', content: 'Old news', visibleUntil: '2020-01-01' });
+
+      await request(app)
+        .post('/api/v1/teacher/announcements')
+        .set('Cookie', teacherCookie)
+        .send({ title: 'Live Notice', content: 'Still current', visibleUntil: '2999-01-01' });
+
+      const res = await request(app)
+        .get('/api/v1/student/announcements')
+        .set('Cookie', studentACookie);
+
+      expect(res.statusCode).toBe(200);
+      const titles = res.body.data.announcements.map((a) => a.title);
+      expect(titles).toContain('Live Notice');
+      expect(titles).not.toContain('Expired Notice');
+    });
+
     it('401 — unauthenticated', async () => {
       const res = await request(app).get('/api/v1/student/announcements');
       expect(res.statusCode).toBe(401);

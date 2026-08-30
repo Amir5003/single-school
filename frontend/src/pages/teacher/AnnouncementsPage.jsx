@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Layout from '../../components/common/Layout';
 import StatusMessage from '../../components/common/StatusMessage';
 import ConfirmModal from '../../components/common/ConfirmModal';
@@ -19,6 +19,21 @@ function formatDate(iso) {
   });
 }
 
+/**
+ * How an announcement's expiry reads in the list. Expired ones stay here for
+ * the author — they are only hidden from students and the public page.
+ */
+function visibility(announcement) {
+  if (!announcement.visibleUntil) return null;
+  const expired = new Date(announcement.visibleUntil) < new Date();
+  return {
+    expired,
+    text: expired
+      ? `Expired ${formatDate(announcement.visibleUntil)}`
+      : `Visible until ${formatDate(announcement.visibleUntil)}`,
+  };
+}
+
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +48,18 @@ export default function AnnouncementsPage() {
 
   const [status, setStatus] = useState({ message: '', type: 'success' });
   const statusTimer = useRef(null);
+
+  // A fresh object literal here would re-seed the form on every parent render,
+  // discarding whatever the teacher had typed.
+  const editInitialData = useMemo(() => {
+    const target = announcements.find((a) => a._id === editId);
+    if (!target) return undefined;
+    return {
+      title: target.title,
+      content: target.content,
+      visibleUntil: target.visibleUntil ?? null,
+    };
+  }, [editId, announcements]);
 
   const showStatus = useCallback((message, type = 'success') => {
     setStatus({ message, type });
@@ -136,6 +163,7 @@ export default function AnnouncementsPage() {
           ) : (
             announcements.map((a) => {
               const isEditing = editId === a._id;
+              const vis = visibility(a);
               return (
                 <div
                   key={a._id}
@@ -148,7 +176,8 @@ export default function AnnouncementsPage() {
                   {isEditing ? (
                     /* ── Inline edit form ── */
                     <AnnouncementForm
-                      initialData={{ title: a.title, content: a.content }}
+                      key={editId}
+                      initialData={editInitialData}
                       onSubmit={handleEdit}
                       onCancel={() => setEditId(null)}
                       loading={editLoading}
@@ -165,12 +194,23 @@ export default function AnnouncementsPage() {
                           >
                             {a.title}
                           </h3>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {formatDate(a.publishedAt)}
-                            {a.isDeleted && (
-                              <span className="ml-2 text-red-400 font-medium">(deleted)</span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-400">{formatDate(a.publishedAt)}</span>
+                            {vis && (
+                              <span
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                                  vis.expired
+                                    ? 'bg-gray-100 text-gray-500 border-gray-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}
+                              >
+                                {vis.text}
+                              </span>
                             )}
-                          </p>
+                            {a.isDeleted && (
+                              <span className="text-xs text-red-400 font-medium">(deleted)</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Actions — only for non-deleted */}

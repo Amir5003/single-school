@@ -14,6 +14,11 @@ const STATUS_LABELS = {
   exempt:  { label: 'Fee Free', bg: 'bg-blue-50   text-blue-700   border-blue-200'   },
 };
 
+const formatDueDate = (d) =>
+  d
+    ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+
 function StatusBadge({ status }) {
   const s = STATUS_LABELS[status] ?? { label: status, bg: 'bg-gray-100 text-gray-600 border-gray-200' };
   return (
@@ -195,11 +200,11 @@ function FeeConfigTab({ classes }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-sm text-gray-500">Define fee amounts per class. Then generate fee records for all enrolled students.</p>
         {!showForm && !editTarget && (
           <button onClick={() => setShowForm(true)}
-            className="px-4 py-2 text-sm rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition">
+            className="w-full sm:w-auto px-4 py-2 text-sm rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition whitespace-nowrap flex-shrink-0">
             + New Config
           </button>
         )}
@@ -236,13 +241,21 @@ function FeeConfigTab({ classes }) {
                 onCancel={() => setEditTarget(null)}
               />
             ) : (
-              <div key={cfg._id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div key={cfg._id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-4 sm:px-5 py-4">
+                {/* Actions drop to their own row on phones — inline they squeeze
+                    the label down to an ellipsis */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate">{cfg.label}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {cfg.classId?.name ?? '—'}{cfg.classId?.section ? ` · ${cfg.classId.section}` : ''} ·
-                      Due {new Date(cfg.dueDate).toLocaleDateString()} · ₹{cfg.amount.toLocaleString()}
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-gray-800 truncate">{cfg.label}</p>
+                      <span className="sm:hidden text-sm font-semibold text-gray-800 whitespace-nowrap">
+                        ₹{cfg.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {cfg.classId?.name ?? '—'}{cfg.classId?.section ? ` · ${cfg.classId.section}` : ''}
+                      {' · '}Due {formatDueDate(cfg.dueDate)}
+                      <span className="hidden sm:inline"> · ₹{cfg.amount.toLocaleString()}</span>
                     </p>
                     {cfg.description && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{cfg.description}</p>
@@ -258,16 +271,16 @@ function FeeConfigTab({ classes }) {
                       onClick={() => handleGenerate(cfg._id)}
                       disabled={genPending === cfg._id}
                       title="Generate fee records for all class students"
-                      className="text-xs px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 transition"
+                      className="flex-1 sm:flex-none text-xs px-3 py-2 sm:py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 transition whitespace-nowrap"
                     >
                       {genPending === cfg._id ? '…' : '⚡ Generate'}
                     </button>
                     <button onClick={() => setEditTarget(cfg)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
+                      className="flex-1 sm:flex-none text-xs px-3 py-2 sm:py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                       Edit
                     </button>
                     <button onClick={() => handleDelete(cfg._id)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition">
+                      className="flex-1 sm:flex-none text-xs px-3 py-2 sm:py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition">
                       Delete
                     </button>
                   </div>
@@ -282,6 +295,13 @@ function FeeConfigTab({ classes }) {
 }
 
 // ─── Fee Records Tab ───────────────────────────────────────────────────────────
+// Header and rows are separate grids, so every non-flexible column needs a
+// fixed width for the two to agree on where a column starts.
+const RECORD_GRID = 'md:grid-cols-[minmax(0,1fr)_100px_90px_90px_175px] md:gap-3';
+
+const FILTER_LABEL   = 'block text-xs font-medium text-gray-500 mb-1';
+const FILTER_CONTROL = 'w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300';
+
 const STATUS_FILTER_OPTIONS = [
   { value: '',        label: 'All'      },
   { value: 'pending', label: 'Pending'  },
@@ -407,59 +427,74 @@ function FeeRecordsTab({ classes, configs = [] }) {
 
       {/* Filters */}
       <div className="space-y-3">
-        {/* Row 1: dropdowns */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3">
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          >
-            <option value="">All Classes</option>
-            {classes.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}{c.section ? ` — ${c.section}` : ''}
-              </option>
-            ))}
-          </select>
-
-          {configs.length > 0 && (
+        {/* Row 1: dropdowns and date range. Each control carries its own
+            label — an empty date input renders as a bare grey box on iOS, so
+            without one there is no way to tell what it filters. */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label htmlFor="fee-class-filter" className={FILTER_LABEL}>Class</label>
             <select
-              value={configFilter}
-              onChange={(e) => setConfigFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              id="fee-class-filter"
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className={FILTER_CONTROL}
             >
-              <option value="">All Labels</option>
-              {configs.map((cfg) => (
-                <option key={cfg._id} value={cfg._id}>{cfg.label}</option>
+              <option value="">All Classes</option>
+              {classes.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}{c.section ? ` — ${c.section}` : ''}
+                </option>
               ))}
             </select>
+          </div>
+
+          {configs.length > 0 && (
+            <div>
+              <label htmlFor="fee-label-filter" className={FILTER_LABEL}>Fee label</label>
+              <select
+                id="fee-label-filter"
+                value={configFilter}
+                onChange={(e) => setConfigFilter(e.target.value)}
+                className={FILTER_CONTROL}
+              >
+                <option value="">All Labels</option>
+                {configs.map((cfg) => (
+                  <option key={cfg._id} value={cfg._id}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
           )}
 
-          {/* Due date range */}
-          <input
-            type="date"
-            value={dueDateFrom}
-            onChange={(e) => setDueDateFrom(e.target.value)}
-            title="Due date from"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
-          <input
-            type="date"
-            value={dueDateTo}
-            onChange={(e) => setDueDateTo(e.target.value)}
-            title="Due date to"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
+          <div>
+            <label htmlFor="fee-due-from" className={FILTER_LABEL}>Due from</label>
+            <input
+              id="fee-due-from"
+              type="date"
+              value={dueDateFrom}
+              onChange={(e) => setDueDateFrom(e.target.value)}
+              className={FILTER_CONTROL}
+            />
+          </div>
+          <div>
+            <label htmlFor="fee-due-to" className={FILTER_LABEL}>Due until</label>
+            <input
+              id="fee-due-to"
+              type="date"
+              value={dueDateTo}
+              onChange={(e) => setDueDateTo(e.target.value)}
+              className={FILTER_CONTROL}
+            />
+          </div>
         </div>
 
         {/* Row 2: status pills + count + export */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+          <div className="flex rounded-xl border border-gray-200 overflow-x-auto scrollbar-hide max-w-full">
             {STATUS_FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setStatusFilter(opt.value)}
-                className={`px-3 py-1.5 text-xs font-medium transition
+                className={`px-3 py-1.5 text-xs font-medium transition flex-shrink-0 whitespace-nowrap
                   ${statusFilter === opt.value
                     ? 'bg-indigo-600 text-white'
                     : 'text-gray-600 hover:bg-gray-50'}`}
@@ -502,13 +537,16 @@ function FeeRecordsTab({ classes, configs = [] }) {
       ) : (
         <>
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-            {/* Table header */}
-            <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100
-              text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            {/* Table header — hidden below md, where each record is a card.
+                Column widths are fixed rather than auto so the header and the
+                rows below it (separate grids) actually line up. */}
+            <div className={`hidden md:grid ${RECORD_GRID} px-5 py-3 bg-gray-50 border-b border-gray-100
+              text-xs font-semibold text-gray-500 uppercase tracking-wide`}>
               <span>Student</span>
-              <span className="hidden sm:block">Due Date</span>
+              <span>Due Date</span>
               <span>Amount</span>
               <span>Status</span>
+              <span>Actions</span>
             </div>
 
             {fees.map((fee) => {
@@ -520,50 +558,70 @@ function FeeRecordsTab({ classes, configs = [] }) {
 
               return (
                 <div key={fee._id}
-                  className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3.5 items-center border-b border-gray-50 hover:bg-gray-50 transition">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{studentName}</p>
-                    <p className="text-xs text-gray-400">{enrollmentId}{className ? ` · ${className}` : ''}</p>
+                  className={`flex flex-col gap-2.5 px-4 py-3.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition
+                    md:grid ${RECORD_GRID} md:items-center md:px-5`}>
+                  {/* Student — the amount sits alongside on phones, where there
+                      is no separate Amount column to carry it */}
+                  <div className="flex items-start justify-between gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{studentName}</p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {enrollmentId}{className ? ` · ${className}` : ''}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 md:hidden">
+                        Due {formatDueDate(fee.dueDate)}
+                      </p>
+                    </div>
+                    <span className="md:hidden text-sm font-semibold text-gray-800 whitespace-nowrap">
+                      ₹{fee.amount.toLocaleString()}
+                    </span>
                   </div>
-                  <span className="hidden sm:block text-xs text-gray-500">
-                    {new Date(fee.dueDate).toLocaleDateString()}
+
+                  <span className="hidden md:block text-xs text-gray-500 whitespace-nowrap">
+                    {formatDueDate(fee.dueDate)}
                   </span>
-                  <span className="text-sm font-semibold text-gray-700">
+                  <span className="hidden md:block text-sm font-semibold text-gray-700 whitespace-nowrap">
                     ₹{fee.amount.toLocaleString()}
                   </span>
-                  <div className="flex items-center gap-1">
+
+                  {/* `md:contents` lifts the badge and the buttons into the
+                      Status and Actions columns while keeping them one row on
+                      phones */}
+                  <div className="flex items-center justify-between gap-2 md:contents">
                     <StatusBadge status={fee.status} />
-                    {/* Quick action buttons */}
-                    {fee.status !== 'paid' && (
-                      <button
-                        onClick={() => handleStatusChange(fee._id, 'paid')}
-                        disabled={isUpdating}
-                        title="Mark as paid"
-                        className="ml-1 text-xs px-2 py-1 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 transition"
-                      >
-                        {isUpdating ? '…' : '✓'}
-                      </button>
-                    )}
-                    {fee.status !== 'exempt' && (
-                      <button
-                        onClick={() => handleStatusChange(fee._id, 'exempt')}
-                        disabled={isUpdating}
-                        title="Grant fee exemption"
-                        className="text-xs px-2 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition"
-                      >
-                        Free
-                      </button>
-                    )}
-                    {(fee.status === 'paid' || fee.status === 'exempt') && (
-                      <button
-                        onClick={() => handleStatusChange(fee._id, 'pending')}
-                        disabled={isUpdating}
-                        title="Reset to pending"
-                        className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition"
-                      >
-                        ↩
-                      </button>
-                    )}
+
+                    <div className="flex items-center gap-1.5">
+                      {fee.status !== 'paid' && (
+                        <button
+                          onClick={() => handleStatusChange(fee._id, 'paid')}
+                          disabled={isUpdating}
+                          title="Mark as paid"
+                          className="text-xs px-2 py-1 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 transition whitespace-nowrap"
+                        >
+                          {isUpdating ? '…' : 'Mark paid'}
+                        </button>
+                      )}
+                      {fee.status !== 'exempt' && (
+                        <button
+                          onClick={() => handleStatusChange(fee._id, 'exempt')}
+                          disabled={isUpdating}
+                          title="Grant fee exemption"
+                          className="text-xs px-2 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition whitespace-nowrap"
+                        >
+                          Fee free
+                        </button>
+                      )}
+                      {(fee.status === 'paid' || fee.status === 'exempt') && (
+                        <button
+                          onClick={() => handleStatusChange(fee._id, 'pending')}
+                          disabled={isUpdating}
+                          title="Reset to pending"
+                          className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition whitespace-nowrap"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

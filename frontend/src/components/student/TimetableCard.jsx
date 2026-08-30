@@ -25,17 +25,20 @@ export default function TimetableCard({ periods }) {
   const [activeDay, setActiveDay] = useState('Monday');
   const staggerProps = getVariants(staggerContainer);
 
-  const filtered = (periods ?? []).filter((p) => p.day === activeDay);
+  // "HH:MM" sorts correctly as a string, so the day always reads top-to-bottom.
+  const filtered = (periods ?? [])
+    .filter((p) => p.day === activeDay)
+    .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
 
   return (
     <div>
-      {/* Day tabs */}
-      <div className="flex gap-2 flex-wrap mb-6">
+      {/* Day tabs — a fixed 6-up grid on phones so Saturday never wraps */}
+      <div className="grid grid-cols-6 gap-1 sm:flex sm:gap-2 mb-6">
         {DAYS.map((day) => (
           <button
             key={day}
             onClick={() => setActiveDay(day)}
-            className={`relative px-4 py-1.5 rounded-full text-sm font-medium transition-colors focus:outline-none ${
+            className={`relative px-1 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors focus:outline-none ${
               activeDay === day
                 ? 'text-white'
                 : 'text-gray-600 hover:text-indigo-600'
@@ -71,21 +74,31 @@ export default function TimetableCard({ periods }) {
               <motion.li
                 key={period._id}
                 variants={fadeInUp}
-                className="backdrop-blur-sm bg-white/70 rounded-xl border border-white/20 shadow-sm p-4 flex items-center justify-between gap-4"
+                className="backdrop-blur-sm bg-white/70 rounded-xl border border-white/20 shadow-sm p-4 flex items-stretch gap-3 sm:gap-4"
               >
-                <div className="flex items-center gap-3">
+                {/* Fixed-width time column keeps every row's subject and
+                    teacher starting at the same x, whatever the subject name */}
+                <div className="w-14 flex-shrink-0 text-right">
+                  <p className="text-sm font-semibold text-gray-800 tabular-nums leading-tight">
+                    {period.startTime}
+                  </p>
+                  <p className="text-xs text-gray-400 tabular-nums leading-tight mt-0.5">
+                    {period.endTime}
+                  </p>
+                </div>
+
+                <div className="w-px bg-gray-200 flex-shrink-0" aria-hidden="true" />
+
+                <div className="min-w-0 flex-1">
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${subjectColour(period.subject)}`}
+                    className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${subjectColour(period.subject)}`}
                   >
                     {period.subject}
                   </span>
-                  <span className="text-sm text-gray-700 font-medium">
+                  <p className="mt-1.5 text-sm text-gray-700 font-medium truncate">
                     {period.teacherId?.userId?.name ?? 'Teacher'}
-                  </span>
+                  </p>
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {period.startTime} – {period.endTime}
-                </span>
               </motion.li>
             ))
           )}

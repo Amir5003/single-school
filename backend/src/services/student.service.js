@@ -8,6 +8,7 @@ const Timetable = require('../models/Timetable.model');
 const Attendance = require('../models/Attendance.model');
 const Marks = require('../models/Marks.model');
 const Announcement = require('../models/Announcement.model');
+const { notExpiredFilter } = require('./announcement.service');
 const ApiError = require('../utils/ApiError');
 const emailConflictError = require('../utils/emailConflict');
 const logger = require('../utils/logger');
@@ -384,7 +385,12 @@ const getStudentMarks = async (userId, schoolId) => {
  * @returns {Promise<Announcement[]>}
  */
 const getStudentAnnouncements = async (schoolId) => {
-  return Announcement.find({ schoolId, isDeleted: false, targetRole: { $in: ['all', 'student'] } })
+  return Announcement.find({
+    schoolId,
+    isDeleted: false,
+    targetRole: { $in: ['all', 'student'] },
+    ...notExpiredFilter(),
+  })
     .populate({
       path: 'teacherId',
       select: 'userId',
