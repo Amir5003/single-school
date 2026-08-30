@@ -2,9 +2,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
-import { selectUser, selectRole, selectIsAuthenticated, selectSchoolSlug, clearCredentials } from '../redux/slices/authSlice';
+import { selectUser, selectRole, selectIsAuthenticated, selectSchoolSlug } from '../redux/slices/authSlice';
 import { logoutUser } from '../api/auth.api';
-import { clearTokens } from '../api/tokenStorage';
+import { resetSession } from '../utils/sessionReset';
+import { getDashboardPath } from '../utils/dashboardPath';
 
 // ── Motion helpers ────────────────────────────────────────────────────────────
 const reduced =
@@ -30,16 +31,6 @@ const ROLE_LABELS = {
   parent: 'Parent',
 };
 
-function getDashboardPath(role, schoolSlug) {
-  if (role === 'super-admin') return '/platform/schools';
-  if (!schoolSlug) return '/';
-  if (role === 'school-admin') return `/schools/${schoolSlug}/admin/dashboard`;
-  if (role === 'teacher') return `/schools/${schoolSlug}/teacher/dashboard`;
-  if (role === 'student') return `/schools/${schoolSlug}/student/dashboard`;
-  if (role === 'parent') return `/schools/${schoolSlug}/parent/dashboard`;
-  return '/';
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const user = useSelector(selectUser);
@@ -51,22 +42,25 @@ export default function Home() {
 
   const dashboardPath = getDashboardPath(role, schoolSlug);
 
-  // T050 — restore school context from localStorage on mount
+  // T050 — restore school context on mount. The signed-in user's own slug wins;
+  // `lastSchoolSlug` is only a fallback for a session restored without one. It
+  // must never override auth, or a stale value sends this user to another
+  // school's URL.
   const lastSlug = typeof localStorage !== 'undefined'
     ? localStorage.getItem('lastSchoolSlug')
     : null;
 
   useEffect(() => {
-    if (isAuthenticated && lastSlug) {
-      navigate(getDashboardPath(role, lastSlug), { replace: true });
+    const restoreSlug = schoolSlug ?? lastSlug;
+    if (isAuthenticated && restoreSlug) {
+      navigate(getDashboardPath(role, restoreSlug), { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = async () => {
     try { await logoutUser(); } catch { /* tokens cleared regardless */ }
-    clearTokens();
-    dispatch(clearCredentials());
+    resetSession(dispatch);
     navigate('/login');
   };
 

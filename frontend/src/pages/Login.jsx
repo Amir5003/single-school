@@ -1,18 +1,6 @@
 import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import LoginForm from '../components/common/LoginForm';
-import { selectRole, selectSchoolSlug } from '../redux/slices/authSlice';
-
-function getDashboardPath(role, schoolSlug) {
-  if (role === 'super-admin') return '/platform/schools';
-  if (!schoolSlug) return '/';
-  const base = `/schools/${schoolSlug}`;
-  if (role === 'school-admin') return `${base}/admin/dashboard`;
-  if (role === 'teacher')      return `${base}/teacher/dashboard`;
-  if (role === 'student')      return `${base}/student/dashboard`;
-  if (role === 'parent')       return `${base}/parent/dashboard`;
-  return '/';
-}
+import { getDashboardPath, isForeignSchoolPath } from '../utils/dashboardPath';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -23,7 +11,12 @@ export default function Login() {
 
   const handleSuccess = (user) => {
     const resolvedSlug = user.schoolId?.slug ?? null;
-    const dest = from ?? getDashboardPath(user.role, resolvedSlug);
+    // Discard a `from` that belongs to a different school — ProtectedRoute
+    // captured it for whoever was signed in before, not for this user.
+    const dest =
+      from && !isForeignSchoolPath(from, resolvedSlug)
+        ? from
+        : getDashboardPath(user.role, resolvedSlug);
     navigate(dest, { replace: true });
   };
 

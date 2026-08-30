@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { selectUser, selectRole } from '../../redux/slices/authSlice';
+import { selectUser, selectRole, selectSchoolSlug } from '../../redux/slices/authSlice';
 import {
   selectFeatures,
   selectSubscriptionSummary,
 } from '../../redux/slices/subscriptionSlice';
-import {
-  selectSchoolName,
-  selectSchoolSlug,
-} from '../../redux/slices/schoolSlice';
+import { selectSchoolName } from '../../redux/slices/schoolSlice';
 import { FEATURES } from '../../utils/features';
 
 /**

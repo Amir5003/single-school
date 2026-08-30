@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, useLocation, useParams, Outlet, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginModal from './components/common/LoginModal';
@@ -50,7 +50,7 @@ import ChildDetail from './pages/parent/ChildDetail';
 import NotFound from './pages/NotFound';
 import SchoolBrandingProvider from './components/common/SchoolBrandingProvider';
 import { getSchoolConfig } from './api/school.api';
-import { setSchoolConfig } from './redux/slices/schoolSlice';
+import { setSchoolConfig, clearSchoolConfig, selectSchoolContextSlug } from './redux/slices/schoolSlice';
 
 /**
  * SchoolContextLoader — fetches and dispatches school config before rendering
@@ -60,6 +60,17 @@ function SchoolContextLoader() {
   const { slug } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const loadedSlug = useSelector(selectSchoolContextSlug);
+
+  // Drop the previous school's context the moment the URL points elsewhere.
+  // The fetch below fails silently on anything but a 404 (and Render's free
+  // tier cold-starts, so timeouts are real) — without this, a failed fetch
+  // would leave the previous school's name, logo and colours on screen.
+  useEffect(() => {
+    if (slug && loadedSlug && loadedSlug !== slug) {
+      dispatch(clearSchoolConfig());
+    }
+  }, [slug, loadedSlug, dispatch]);
 
   useEffect(() => {
     if (!slug) return;

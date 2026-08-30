@@ -5,6 +5,7 @@ import {
   setAccessToken,
   clearTokens,
 } from './tokenStorage';
+import { resetSession } from '../utils/sessionReset';
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -48,9 +49,9 @@ function addToRefreshQueue() {
 function redirectToLogin() {
   clearTokens();
   if (_store) {
-    import('../redux/slices/authSlice').then(({ clearCredentials }) => {
-      _store.dispatch(clearCredentials());
-    });
+    // resetSession clears auth AND the school/subscription slices — clearing
+    // auth alone left the expired user's school slug and branding in memory.
+    resetSession(_store.dispatch);
   }
   const href = _navigate ? null : window.location.href;
   if (_navigate) {

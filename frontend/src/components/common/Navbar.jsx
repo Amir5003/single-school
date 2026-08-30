@@ -1,16 +1,14 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { selectUser, selectSchoolSlug, clearCredentials } from '../../redux/slices/authSlice';
+import { selectUser } from '../../redux/slices/authSlice';
 import { selectSchoolName, selectSchoolBranding } from '../../redux/slices/schoolSlice';
-import { reset as resetSubscription } from '../../redux/slices/subscriptionSlice';
 import { logoutUser } from '../../api/auth.api';
-import { clearTokens } from '../../api/tokenStorage';
+import { resetSession } from '../../utils/sessionReset';
 
 export default function Navbar({ onMenuToggle }) {
   const user         = useSelector(selectUser);
   const schoolName   = useSelector(selectSchoolName);
   const branding     = useSelector(selectSchoolBranding);
-  const schoolSlug   = useSelector(selectSchoolSlug);
   const dispatch     = useDispatch();
   const navigate     = useNavigate();
 
@@ -20,10 +18,7 @@ export default function Navbar({ onMenuToggle }) {
     } catch {
       // tokens cleared regardless
     }
-    clearTokens();
-    localStorage.removeItem('lastSchoolSlug');  // T051
-    dispatch(clearCredentials());
-    dispatch(resetSubscription());
+    resetSession(dispatch);
     // replace: true so protected pages are removed from browser history
     navigate('/', { replace: true });
   };

@@ -1,23 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { loginUser } from '../../api/auth.api';
 import { setTokens } from '../../api/tokenStorage';
 import { setCredentials } from '../../redux/slices/authSlice';
-import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import { fadeInUp } from '../../utils/animationVariants';
-
-function getDashboardPath(role, schoolSlug) {
-  if (role === 'super-admin') return '/platform/schools';
-  if (!schoolSlug) return '/';
-  const base = `/schools/${schoolSlug}`;
-  if (role === 'school-admin') return `${base}/admin/dashboard`;
-  if (role === 'teacher')      return `${base}/teacher/dashboard`;
-  if (role === 'student')      return `${base}/student/dashboard`;
-  if (role === 'parent')       return `${base}/parent/dashboard`;
-  return '/';
-}
+import { getDashboardPath } from '../../utils/dashboardPath';
 
 /**
  * Reusable login form. Can be used standalone (Login page) or inside LoginModal.
@@ -30,8 +19,6 @@ export default function LoginForm({ onSuccess, onCancel }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { slug: urlSlug } = useParams();
-  const reduxSchoolSlug = useSelector(selectSchoolSlug);
-  const schoolSlug = urlSlug ?? reduxSchoolSlug;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +36,9 @@ export default function LoginForm({ onSuccess, onCancel }) {
       const data = await loginUser({ email, password });
       const { user, accessToken, refreshToken, entitlements } = data.data;
       setTokens({ accessToken, refreshToken });
-      const resolvedSlug = user.schoolId?.slug ?? schoolSlug ?? null;
+      // The login response populates schoolId — never fall back to the slug
+      // held in Redux, which still belongs to the previously signed-in user.
+      const resolvedSlug = user.schoolId?.slug ?? urlSlug ?? null;
       const resolvedId   = user.schoolId?._id  ?? user.schoolId ?? null;
       dispatch(
         setCredentials({

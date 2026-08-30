@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { selectSchoolName, selectSchoolBranding, selectSchoolSlug } from '../redux/slices/schoolSlice';
+import { selectSchoolName, selectSchoolBranding, selectSchoolContextSlug } from '../redux/slices/schoolSlice';
 import { getSchoolPublicAnnouncements } from '../api/school.api';
 import { fadeInUp, staggerContainer } from '../utils/animationVariants';
 
@@ -20,7 +20,7 @@ export default function SchoolLanding() {
 
   // SchoolContextLoader (parent) already fetches config and populates Redux.
   // We just read from the store — no duplicate fetch needed.
-  const reduxSlug = useSelector(selectSchoolSlug);
+  const reduxSlug = useSelector(selectSchoolContextSlug);
   const schoolName = useSelector(selectSchoolName);
   const branding = useSelector(selectSchoolBranding);
 

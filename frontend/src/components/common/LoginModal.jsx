@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { closeLoginModal, selectLoginModal } from '../../redux/slices/uiSlice';
 import LoginForm from './LoginForm';
+import { getDashboardPath, isForeignSchoolPath } from '../../utils/dashboardPath';
 
 const overlay = {
   hidden:  { opacity: 0 },
@@ -46,9 +47,18 @@ export default function LoginModal() {
     return () => document.removeEventListener('keydown', handleKey);
   }, [isOpen, dispatch]);
 
-  const handleSuccess = () => {
+  const handleSuccess = (user) => {
     dispatch(closeLoginModal());
-    navigate(redirectTo ?? location.pathname, { replace: true });
+    // The expired session and the new sign-in need not be the same person. If
+    // the page behind the modal belongs to another school, don't return to it.
+    const resolvedSlug = user?.schoolId?.slug ?? null;
+    const target = redirectTo ?? location.pathname;
+    navigate(
+      isForeignSchoolPath(target, resolvedSlug)
+        ? getDashboardPath(user?.role, resolvedSlug)
+        : target,
+      { replace: true }
+    );
   };
 
   const handleCancel = () => dispatch(closeLoginModal());

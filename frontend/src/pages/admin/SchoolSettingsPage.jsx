@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Layout from '../../components/common/Layout';
 import StatusMessage from '../../components/common/StatusMessage';
-import { selectSchoolSlug, selectSchoolBranding, selectSchoolName, setSchoolConfig } from '../../redux/slices/schoolSlice';
+import { selectSchoolBranding, selectSchoolName, setSchoolBranding } from '../../redux/slices/schoolSlice';
+import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import { getSchoolProfile, updateSchoolBranding } from '../../api/admin.api';
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -74,7 +75,7 @@ export default function SchoolSettingsPage() {
       const updated = res.data?.school?.branding ?? payload;
 
       // Push updated branding into Redux so Navbar/Sidebar reflect changes immediately
-      dispatch(setSchoolConfig({ branding: updated }));
+      dispatch(setSchoolBranding(updated));
       setStatus({ message: 'School settings saved successfully.', type: 'success' });
     } catch (err) {
       setStatus({
