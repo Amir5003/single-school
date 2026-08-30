@@ -4,6 +4,7 @@ const User = require('../models/User.model');
 const School = require('../models/School.model');
 const pricingService = require('./subscription/pricing.service');
 const ApiError = require('../utils/ApiError');
+const emailConflictError = require('../utils/emailConflict');
 
 const BCRYPT_ROUNDS = 12;
 
@@ -55,7 +56,9 @@ const signRefreshToken = (user) =>
 const register = async (data) => {
   const existing = await User.findOne({ email: data.email });
   if (existing) {
-    throw new ApiError(409, 'An account with this email already exists');
+    // Public caller: only says "already in this school" when the registrant
+    // named that school themselves, so nothing new is revealed.
+    throw emailConflictError(existing, { schoolId: data.schoolId, publicCaller: true });
   }
 
   const user = await User.create({

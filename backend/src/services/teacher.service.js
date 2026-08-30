@@ -4,6 +4,7 @@ const User = require('../models/User.model');
 const Teacher = require('../models/Teacher.model');
 const ClassTeacher = require('../models/ClassTeacher.model');
 const ApiError = require('../utils/ApiError');
+const emailConflictError = require('../utils/emailConflict');
 const logger = require('../utils/logger');
 
 const MONGO_DUPLICATE_KEY = 11000;
@@ -45,7 +46,7 @@ const createTeacher = async (data, schoolId) => {
     throw new ApiError(409, `Employee ID '${resolvedId}' is already in use`);
   }
   if (dupEmail) {
-    throw new ApiError(409, 'An account with this email already exists');
+    throw emailConflictError(dupEmail, { schoolId, label: 'teacher' });
   }
 
   // Always generate a secure temp password — never accept one from the admin
@@ -80,8 +81,11 @@ const createTeacher = async (data, schoolId) => {
 
     if (err.code === MONGO_DUPLICATE_KEY) {
       const keyPattern = err.keyPattern || {};
-      const label = 'employeeId' in keyPattern ? `Employee ID '${resolvedId}'` : 'email';
-      throw new ApiError(409, `${label} is already in use`);
+      if ('employeeId' in keyPattern) {
+        throw new ApiError(409, `Employee ID '${resolvedId}' is already in use`);
+      }
+      // Lost a race on the unique email index — same conflict, same message.
+      throw emailConflictError(await User.findOne({ email }), { schoolId, label: 'teacher' });
     }
     throw err;
   } finally {

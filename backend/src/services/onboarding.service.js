@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const School = require('../models/School.model');
 const User = require('../models/User.model');
 const ApiError = require('../utils/ApiError');
+const emailConflictError = require('../utils/emailConflict');
 const subscriptionLifecycle = require('./subscription/lifecycle.service');
 
 /**
@@ -42,9 +43,11 @@ const registerSchool = async ({ name, slug, adminEmail, adminPassword, phone }) 
     throw new ApiError(409, 'This slug is already taken');
   }
 
+  // A new school is being created, so any existing account is necessarily
+  // attached to a different one.
   const emailTaken = await User.exists({ email: adminEmail });
   if (emailTaken) {
-    throw new ApiError(409, 'An account with this email already exists');
+    throw emailConflictError(null, { publicCaller: true });
   }
 
   const session = await mongoose.startSession();

@@ -9,6 +9,7 @@ const Attendance = require('../models/Attendance.model');
 const Marks = require('../models/Marks.model');
 const Announcement = require('../models/Announcement.model');
 const ApiError = require('../utils/ApiError');
+const emailConflictError = require('../utils/emailConflict');
 const logger = require('../utils/logger');
 const studentCountService = require('./subscription/studentCount.service');
 
@@ -45,7 +46,7 @@ const createStudent = async (data, schoolId) => {
     throw new ApiError(409, `Enrollment ID '${normalizedId}' is already in use`);
   }
   if (dupEmail) {
-    throw new ApiError(409, 'An account with this email already exists');
+    throw emailConflictError(dupEmail, { schoolId, label: 'student' });
   }
 
   // Use admin-provided password if given; otherwise generate a secure temp password
@@ -90,10 +91,11 @@ const createStudent = async (data, schoolId) => {
 
     if (err.code === MONGO_DUPLICATE_KEY) {
       const keyPattern = err.keyPattern || {};
-      const label = 'enrollmentId' in keyPattern
-        ? `Enrollment ID '${normalizedId}'`
-        : 'email';
-      throw new ApiError(409, `${label} is already in use`);
+      if ('enrollmentId' in keyPattern) {
+        throw new ApiError(409, `Enrollment ID '${normalizedId}' is already in use`);
+      }
+      // Lost a race on the unique email index — same conflict, same message.
+      throw emailConflictError(await User.findOne({ email }), { schoolId, label: 'student' });
     }
     throw err;
   } finally {
