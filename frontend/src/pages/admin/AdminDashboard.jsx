@@ -3,8 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Layout from '../../components/common/Layout';
 import { getStudents, getTeachers, getClasses } from '../../api/admin.api';
+import { listFees } from '../../api/fee.api';
 import { selectUser, selectSchoolSlug } from '../../redux/slices/authSlice';
-import FeeManagementTable from '../../components/admin/FeeManagementTable';
+
+// Fee triage shown on the dashboard. Each tile deep-links into the Fees page
+// with the matching filter already applied — the dashboard reports, the Fees
+// page is where fees are actually managed.
+const FEE_TILES = [
+  { key: 'pending', label: 'Pending', bg: 'bg-amber-50',   text: 'text-amber-700',   ring: 'hover:ring-amber-200' },
+  { key: 'paid',    label: 'Paid',    bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'hover:ring-emerald-200' },
+  { key: 'overdue', label: 'Overdue', bg: 'bg-red-50',     text: 'text-red-700',     ring: 'hover:ring-red-200' },
+];
 
 export default function AdminDashboard() {
   const user = useSelector(selectUser);
@@ -17,9 +26,11 @@ export default function AdminDashboard() {
     { label: 'Manage Teachers', to: `${base}/admin/teachers`, color: 'bg-violet-50 text-violet-700 hover:bg-violet-100' },
     { label: 'Manage Classes',  to: `${base}/admin/classes`,  color: 'bg-sky-50 text-sky-700 hover:bg-sky-100' },
     { label: 'Timetable',       to: `${base}/admin/timetable`, color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+    { label: 'Fees',            to: `${base}/admin/fees`,     color: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
   ];
 
   const [counts, setCounts] = useState({ students: '—', teachers: '—', classes: '—' });
+  const [feeCounts, setFeeCounts] = useState({ pending: '—', paid: '—', overdue: '—' });
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -46,6 +57,23 @@ export default function AdminDashboard() {
     };
 
     fetchCounts();
+  }, []);
+
+  useEffect(() => {
+    const fetchFeeCounts = async () => {
+      const results = await Promise.allSettled(
+        FEE_TILES.map((tile) => listFees({ status: tile.key, page: 1, limit: 1 }))
+      );
+      setFeeCounts(
+        FEE_TILES.reduce((acc, tile, i) => {
+          const r = results[i];
+          acc[tile.key] = r.status === 'fulfilled' ? (r.value?.data?.total ?? 0) : '—';
+          return acc;
+        }, {})
+      );
+    };
+
+    fetchFeeCounts();
   }, []);
 
   const statCards = [
@@ -102,7 +130,7 @@ export default function AdminDashboard() {
       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
         Quick Actions
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {QUICK_ACTIONS.map((action) => (
           <button
             key={action.to}
@@ -114,9 +142,31 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Fee management */}
+      {/* Fee summary */}
       <div className="mt-10">
-        <FeeManagementTable />
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Fees
+          </h3>
+          <button
+            onClick={() => navigate(`${base}/admin/fees`)}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition"
+          >
+            Manage fees →
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {FEE_TILES.map((tile) => (
+            <button
+              key={tile.key}
+              onClick={() => navigate(`${base}/admin/fees?tab=records&status=${tile.key}`)}
+              className={`${tile.bg} rounded-2xl p-4 text-left transition hover:ring-2 ${tile.ring}`}
+            >
+              <p className={`text-2xl font-bold ${tile.text}`}>{feeCounts[tile.key]}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{tile.label}</p>
+            </button>
+          ))}
+        </div>
       </div>
     </Layout>
   );
