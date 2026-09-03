@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../../components/common/Layout';
 import EmptyState from '../../components/common/EmptyState';
 import { getClasses } from '../../api/admin.api';
@@ -310,13 +311,13 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'exempt',  label: 'Fee Free' },
 ];
 
-function FeeRecordsTab({ classes, configs = [] }) {
+function FeeRecordsTab({ classes, configs = [], initialStatus = '' }) {
   const [fees, setFees]         = useState([]);
   const [loading, setLoading]   = useState(true);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [classFilter, setClassFilter]   = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [configFilter, setConfigFilter] = useState('');
   const [dueDateFrom, setDueDateFrom]   = useState('');
   const [dueDateTo, setDueDateTo]       = useState('');
@@ -650,7 +651,12 @@ function FeeRecordsTab({ classes, configs = [] }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function FeesPage() {
-  const [tab, setTab]           = useState('configs');
+  // The admin dashboard's fee tiles link here as ?tab=records&status=pending.
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status') ?? '';
+  const [tab, setTab]           = useState(
+    searchParams.get('tab') === 'records' || initialStatus ? 'records' : 'configs'
+  );
   const [classes, setClasses]   = useState([]);
   const [configs, setConfigs]   = useState([]);
 
@@ -688,7 +694,7 @@ export default function FeesPage() {
 
         {tab === 'configs'
           ? <FeeConfigTab classes={classes} />
-          : <FeeRecordsTab classes={classes} configs={configs} />}
+          : <FeeRecordsTab classes={classes} configs={configs} initialStatus={initialStatus} />}
       </div>
     </Layout>
   );
