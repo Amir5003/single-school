@@ -30,7 +30,8 @@ import FeatureGate from './components/common/FeatureGate';
 import { FEATURES } from './utils/features';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import AttendancePage from './pages/teacher/AttendancePage';
-import MarksPage from './pages/teacher/MarksPage';
+import TeacherCourseworkPage from './pages/teacher/CourseworkPage';
+import AssessmentEntryPage from './pages/teacher/AssessmentEntryPage';
 import AnnouncementsPage from './pages/teacher/AnnouncementsPage';
 import MyExamsPage from './pages/teacher/MyExamsPage';
 import SubmissionEntryPage from './pages/teacher/SubmissionEntryPage';
@@ -38,7 +39,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import ProfilePage from './pages/student/ProfilePage';
 import StudentTimetablePage from './pages/student/TimetablePage';
 import StudentAttendancePage from './pages/student/AttendancePage';
-import StudentMarksPage from './pages/student/MarksPage';
+import StudentCourseworkPage from './pages/student/MarksPage';
 import StudentAnnouncementsPage from './pages/student/AnnouncementsPage';
 import ResultsPage from './pages/student/ResultsPage';
 import SchoolsList from './pages/platform/SchoolsList';
@@ -105,10 +106,10 @@ function StudentRoutes() {
         <Route path="timetable" element={<StudentTimetablePage />} />
         <Route path="attendance" element={<StudentAttendancePage />} />
         <Route
-          path="marks"
+          path="coursework"
           element={
             <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="student">
-              <StudentMarksPage />
+              <StudentCourseworkPage />
             </FeatureGate>
           }
         />
@@ -225,10 +226,18 @@ export default function App() {
                     <Route path="dashboard" element={<TeacherDashboard />} />
                     <Route path="attendance" element={<AttendancePage />} />
                     <Route
-                      path="marks"
+                      path="coursework"
                       element={
                         <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="teacher">
-                          <MarksPage />
+                          <TeacherCourseworkPage />
+                        </FeatureGate>
+                      }
+                    />
+                    <Route
+                      path="coursework/:assessmentId"
+                      element={
+                        <FeatureGate feature={FEATURES.EXAMS_RESULTS} role="teacher">
+                          <AssessmentEntryPage />
                         </FeatureGate>
                       }
                     />

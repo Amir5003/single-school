@@ -11,8 +11,8 @@ export const getAttendance = (month) =>
     .get('/student/attendance', { params: month ? { month } : {} })
     .then((r) => r.data);
 
-export const getMarks = () =>
-  axiosInstance.get('/student/marks').then((r) => r.data);
+export const getCoursework = (params = {}) =>
+  axiosInstance.get('/student/coursework', { params }).then((r) => r.data);
 
 export const getStudentAnnouncements = () =>
   axiosInstance.get('/student/announcements').then((r) => r.data);

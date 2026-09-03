@@ -25,19 +25,6 @@ export const getAttendance = (classId, date) =>
 
 // ── Marks ─────────────────────────────────────────────────────────────────────
 
-/**
- * @param {{ studentId, classId, subject, examType, marksObtained, maxMarks? }} data
- */
-export const saveMark = (data) =>
-  axiosInstance.post('/teacher/marks', data).then((r) => r.data);
-
-/**
- * @param {string} classId
- * @param {string} subject
- */
-export const getMarks = (classId, subject) =>
-  axiosInstance.get('/teacher/marks', { params: { classId, subject } }).then((r) => r.data);
-
 // ── Announcements ─────────────────────────────────────────────────────────────
 
 export const postAnnouncement = (data) =>

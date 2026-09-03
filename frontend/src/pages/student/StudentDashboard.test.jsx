@@ -8,14 +8,14 @@ import StudentDashboard from './StudentDashboard';
 vi.mock('../../api/student.api', () => ({
   getProfile: vi.fn(),
   getAttendance: vi.fn(),
-  getMarks: vi.fn(),
+  getCoursework: vi.fn(),
   getStudentAnnouncements: vi.fn(),
 }));
 
 import {
   getProfile,
   getAttendance,
-  getMarks,
+  getCoursework,
   getStudentAnnouncements,
 } from '../../api/student.api';
 
@@ -37,8 +37,33 @@ describe('StudentDashboard', () => {
     getAttendance.mockResolvedValue({
       data: { percentage: '85.00', totalDays: 20, presentDays: 17, records: [] },
     });
-    getMarks.mockResolvedValue({
-      data: { marks: [{ subject: 'Math', marksObtained: 90, maxMarks: 100, examType: 'final' }], overallPercentage: '90.00' },
+    getCoursework.mockResolvedValue({
+      data: {
+        subjects: [
+          {
+            subject: 'Math',
+            average: 90,
+            count: 1,
+            entries: [
+              {
+                _id: 'e1',
+                title: 'Unit Test 1',
+                subject: 'Math',
+                assessmentType: 'class_test',
+                marksObtained: 90,
+                maxMarks: 100,
+                date: '2026-07-14T00:00:00.000Z',
+                teacherName: 'Mr Ahmed',
+                absent: false,
+                percentage: 90,
+                classAverage: 85,
+              },
+            ],
+          },
+        ],
+        overallPercentage: 90,
+        totalCount: 1,
+      },
     });
     getStudentAnnouncements.mockResolvedValue({
       data: [{ _id: '1', title: 'Notice 1', content: 'Content', publishedAt: new Date().toISOString() }],
@@ -66,7 +91,7 @@ describe('StudentDashboard', () => {
     await waitFor(() => {
       expect(getProfile).toHaveBeenCalledTimes(1);
       expect(getAttendance).toHaveBeenCalledTimes(1);
-      expect(getMarks).toHaveBeenCalledTimes(1);
+      expect(getCoursework).toHaveBeenCalledTimes(1);
       expect(getStudentAnnouncements).toHaveBeenCalledTimes(1);
     });
   });

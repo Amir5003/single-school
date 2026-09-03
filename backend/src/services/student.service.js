@@ -6,7 +6,7 @@ const Student = require('../models/Student.model');
 require('../models/Class.model');
 const Timetable = require('../models/Timetable.model');
 const Attendance = require('../models/Attendance.model');
-const Marks = require('../models/Marks.model');
+const assessmentService = require('./assessment.service');
 const Announcement = require('../models/Announcement.model');
 const { notExpiredFilter } = require('./announcement.service');
 const ApiError = require('../utils/ApiError');
@@ -347,43 +347,25 @@ const getStudentAttendance = async (userId, month, schoolId) => {
 };
 
 /**
- * Get all marks for a student, scoped to the school.
+ * Get a student's coursework, grouped by subject.
+ *
+ * Each entry carries the detail that makes it identifiable — title, date,
+ * teacher, type — plus the class average. Delegates to assessment.service so
+ * students and parents read through exactly one implementation.
  *
  * @param {string} userId
  * @param {string} schoolId
- * @returns {Promise<{ marks, overallPercentage }>}
+ * @param {{ academicYear?: string }} filters
+ * @returns {Promise<{ subjects, overallPercentage, totalCount }>}
  */
-const getStudentMarks = async (userId, schoolId) => {
+const getStudentCoursework = async (userId, schoolId, filters = {}) => {
   const student = await Student.findOne({ userId, schoolId, isDeleted: false }, '_id');
   if (!student) {
     throw new ApiError(404, 'Student profile not found');
   }
-
-  const marks = await Marks.find({ schoolId, studentId: student._id })
-    .sort({ createdAt: -1 })
-    .select('subject examType marksObtained maxMarks');
-
-  let totalObtained = 0;
-  let totalMax = 0;
-  marks.forEach((m) => {
-    totalObtained += m.marksObtained;
-    totalMax += m.maxMarks;
-  });
-
-  const overallPercentage =
-    totalMax === 0
-      ? 0
-      : parseFloat(((totalObtained / totalMax) * 100).toFixed(2));
-
-  return { marks, overallPercentage };
+  return assessmentService.getStudentCoursework(schoolId, student._id, filters);
 };
 
-/**
- * Get latest 20 active announcements for students to read, scoped to the school.
- *
- * @param {string} schoolId
- * @returns {Promise<Announcement[]>}
- */
 const getStudentAnnouncements = async (schoolId) => {
   return Announcement.find({
     schoolId,
@@ -409,6 +391,6 @@ module.exports = {
   getStudentProfile,
   getStudentTimetable,
   getStudentAttendance,
-  getStudentMarks,
+  getStudentCoursework,
   getStudentAnnouncements,
 };

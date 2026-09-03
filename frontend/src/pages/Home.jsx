@@ -184,7 +184,7 @@ export default function Home() {
               {...heroFade(2)}
               className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed"
             >
-              Attendance, marks, timetables and announcements — curated by your
+              Attendance, coursework, report cards, timetables and announcements — curated by your
               school and updated in real time.
             </motion.p>
 
@@ -219,7 +219,7 @@ export default function Home() {
             >
               {[
                 { icon: '📋', label: 'Attendance' },
-                { icon: '🎯', label: 'Marks & Grades' },
+                { icon: '🎯', label: 'Coursework & Report Cards' },
                 { icon: '🗓️', label: 'Timetables' },
                 { icon: '📢', label: 'Announcements' },
               ].map(({ icon, label }) => (
@@ -259,8 +259,8 @@ export default function Home() {
                 },
                 {
                   icon: '🎯',
-                  title: 'Marks & Grades',
-                  desc: 'Enter subject-wise marks, view class performance, and share results instantly.',
+                  title: 'Coursework & Report Cards',
+                  desc: 'Teachers record coursework directly; term exams are published by an admin as report cards.',
                 },
                 {
                   icon: '📝',
@@ -325,14 +325,14 @@ export default function Home() {
                   color: 'from-emerald-500 to-teal-600',
                   bg: 'bg-emerald-50',
                   text: 'text-emerald-700',
-                  items: ['Mark attendance by class', 'Enter marks per subject', 'Post announcements', 'Manage and grade exams'],
+                  items: ['Mark attendance by class', 'Record coursework per subject', 'Post announcements', 'Submit exam marks'],
                 },
                 {
                   role: 'Student',
                   color: 'from-orange-400 to-pink-500',
                   bg: 'bg-orange-50',
                   text: 'text-orange-700',
-                  items: ['View attendance record', 'Check marks & results', 'See class timetable', 'Read announcements'],
+                  items: ['View attendance record', 'Check coursework & report cards', 'See class timetable', 'Read announcements'],
                 },
                 // {
                 //   role: 'Parent',

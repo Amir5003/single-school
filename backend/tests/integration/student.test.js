@@ -105,11 +105,22 @@ const markAttendance = (teacherCookie, classId, date, records) =>
     .set('Cookie', teacherCookie)
     .send({ classId, date, records });
 
-const saveMark = (teacherCookie, data) =>
-  request(app)
-    .post('/api/v1/teacher/marks')
+/** Create a coursework assessment and record one student's score on it. */
+const recordCoursework = async (teacherCookie, { classId, subject, title, maxMarks, studentId, marksObtained }) => {
+  const created = await request(app)
+    .post('/api/v1/teacher/assessments')
     .set('Cookie', teacherCookie)
-    .send(data);
+    .send({ classId, subject, title, assessmentType: 'class_test', maxMarks });
+
+  const assessmentId = created.body.data.assessment._id;
+
+  await request(app)
+    .put(`/api/v1/teacher/assessments/${assessmentId}/scores`)
+    .set('Cookie', teacherCookie)
+    .send({ scores: [{ studentId, marksObtained }] });
+
+  return assessmentId;
+};
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -335,56 +346,81 @@ describe('Student Dashboard — data isolation + read endpoints', () => {
 
   // ── GET /marks ──────────────────────────────────────────────────────────────
 
-  describe('GET /api/v1/student/marks', () => {
-    it('200 — empty result when no marks recorded', async () => {
+  describe('GET /api/v1/student/coursework', () => {
+    it('200 — empty result when no coursework recorded', async () => {
       const res = await request(app)
-        .get('/api/v1/student/marks')
+        .get('/api/v1/student/coursework')
         .set('Cookie', studentACookie);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.data.marks).toHaveLength(0);
+      expect(res.body.data.subjects).toHaveLength(0);
       expect(res.body.data.overallPercentage).toBe(0);
     });
 
-    it('computes overallPercentage correctly for 2 subjects', async () => {
+    it('groups by subject and averages percentages', async () => {
       // Mathematics: 80/100 → 80 %
-      await saveMark(teacherCookie, {
-        studentId: studentADoc,
+      await recordCoursework(teacherCookie, {
         classId,
         subject: 'Mathematics',
-        examType: 'final',
-        marksObtained: 80,
+        title: 'Unit Test 1',
         maxMarks: 100,
+        studentId: studentADoc,
+        marksObtained: 80,
       });
       // Science: 60/100 → 60 %
-      await saveMark(teacherCookie, {
-        studentId: studentADoc,
+      await recordCoursework(teacherCookie, {
         classId,
         subject: 'Science',
-        examType: 'final',
-        marksObtained: 60,
+        title: 'Quiz 1',
         maxMarks: 100,
+        studentId: studentADoc,
+        marksObtained: 60,
       });
 
       const res = await request(app)
-        .get('/api/v1/student/marks')
+        .get('/api/v1/student/coursework')
         .set('Cookie', studentACookie);
 
       expect(res.statusCode).toBe(200);
-      // 2 subjects returned
-      expect(res.body.data.marks).toHaveLength(2);
-      // overall = (80 + 60) / (100 + 100) * 100 = 70 %
+      expect(res.body.data.subjects).toHaveLength(2);
       expect(res.body.data.overallPercentage).toBeCloseTo(70, 1);
+
+      const maths = res.body.data.subjects.find((g) => g.subject === 'Mathematics');
+      expect(maths.average).toBeCloseTo(80, 1);
+      expect(maths.entries[0].title).toBe('Unit Test 1');
+      expect(maths.entries[0].teacherName).toBeTruthy();
+      expect(maths.entries[0].date).toBeTruthy();
+    });
+
+    it('keeps two assessments of the same type in one subject', async () => {
+      // The defect this model replaces: the old flat key was
+      // (student, subject, class, type), so a second class test overwrote the first.
+      await recordCoursework(teacherCookie, {
+        classId, subject: 'Mathematics', title: 'Unit Test 1',
+        maxMarks: 20, studentId: studentADoc, marksObtained: 18,
+      });
+      await recordCoursework(teacherCookie, {
+        classId, subject: 'Mathematics', title: 'Unit Test 2',
+        maxMarks: 20, studentId: studentADoc, marksObtained: 15,
+      });
+
+      const res = await request(app)
+        .get('/api/v1/student/coursework')
+        .set('Cookie', studentACookie);
+
+      const maths = res.body.data.subjects.find((g) => g.subject === 'Mathematics');
+      expect(maths.entries).toHaveLength(2);
+      expect(maths.entries.map((e) => e.title).sort()).toEqual(['Unit Test 1', 'Unit Test 2']);
     });
 
     it('401 — unauthenticated', async () => {
-      const res = await request(app).get('/api/v1/student/marks');
+      const res = await request(app).get('/api/v1/student/coursework');
       expect(res.statusCode).toBe(401);
     });
 
-    it('403 — teacher cannot access student marks endpoint', async () => {
+    it('403 — teacher cannot access student coursework endpoint', async () => {
       const res = await request(app)
-        .get('/api/v1/student/marks')
+        .get('/api/v1/student/coursework')
         .set('Cookie', teacherCookie);
       expect(res.statusCode).toBe(403);
     });
