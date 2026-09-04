@@ -100,9 +100,9 @@ const bootstrapTeacherScenario = async () => {
   return { adminCookie, teacherCookie, teacherId, classId, studentId };
 };
 
-// ── Marks tests ───────────────────────────────────────────────────────────────
+// ── Coursework assessment tests ───────────────────────────────────────────────
 
-describe('Teacher Marks', () => {
+describe('Teacher Coursework Assessments', () => {
   let adminCookie;
   let teacherCookie;
   let classId;
@@ -113,124 +113,245 @@ describe('Teacher Marks', () => {
       await bootstrapTeacherScenario());
   });
 
-  const markPayload = (overrides = {}) => ({
-    studentId,
-    classId,
-    subject: 'Science',
-    examType: 'final',
-    marksObtained: 87,
-    ...overrides,
-  });
+  const createAssessment = (overrides = {}) =>
+    request(app)
+      .post('/api/v1/teacher/assessments')
+      .set('Cookie', teacherCookie)
+      .send({
+        classId,
+        subject: 'Science',
+        title: 'Unit Test 1',
+        assessmentType: 'class_test',
+        maxMarks: 20,
+        ...overrides,
+      });
 
-  // ── POST /api/v1/teacher/marks ────────────────────────────────────────────
+  describe('POST /api/v1/teacher/assessments', () => {
+    it('201 — creates an assessment with title, date and author', async () => {
+      const res = await createAssessment();
 
-  describe('POST /api/v1/teacher/marks — upsert', () => {
-    it('200 — creates a new mark record', async () => {
-      const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload());
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.mark.marksObtained).toBe(87);
+      expect(res.statusCode).toBe(201);
+      expect(res.body.data.assessment.title).toBe('Unit Test 1');
+      expect(res.body.data.assessment.maxMarks).toBe(20);
+      expect(res.body.data.assessment.date).toBeTruthy();
+      expect(res.body.data.assessment.createdBy).toBeTruthy();
     });
 
-    it('200 — upserts existing record (same student + subject + class + examType)', async () => {
-      // Create
-      await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload({ marksObtained: 70 }));
-
-      // Update
-      const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload({ marksObtained: 90 }));
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data.mark.marksObtained).toBe(90);
-    });
-
-    it('422 — marksObtained below 0 is rejected', async () => {
-      const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload({ marksObtained: -1 }));
-
+    it('422 — title is required', async () => {
+      const res = await createAssessment({ title: '' });
       expect(res.statusCode).toBe(422);
-      expect(res.body.success).toBe(false);
     });
 
-    it('422 — marksObtained above 100 is rejected', async () => {
-      const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload({ marksObtained: 101 }));
-
+    it('422 — maxMarks must be at least 1', async () => {
+      const res = await createAssessment({ maxMarks: 0 });
       expect(res.statusCode).toBe(422);
-      expect(res.body.success).toBe(false);
     });
 
-    it('403 — teacher not assigned to class is rejected', async () => {
-      // Create second teacher (not assigned)
+    // Governance guard — term exams belong to the Exam → Report Card pipeline,
+    // which gates visibility on an admin publish. DO NOT DELETE.
+    it.each(['final', 'midterm'])(
+      '422 — assessmentType "%s" is rejected (exam types are not coursework)',
+      async (bannedType) => {
+        const res = await createAssessment({ assessmentType: bannedType });
+        expect(res.statusCode).toBe(422);
+      }
+    );
+
+    it('403 — a teacher not assigned to the class is rejected', async () => {
       await request(app)
         .post('/api/v1/admin/teachers')
         .set('Cookie', adminCookie)
         .send(TEACHER2_DATA);
       await setKnownPassword(TEACHER2_DATA.email, TEACHER2_DATA.password);
-      const { cookie: t2Cookie } = await loginUser(TEACHER2_DATA.email, TEACHER2_DATA.password);
+      const { cookie: otherCookie } = await loginUser(
+        TEACHER2_DATA.email,
+        TEACHER2_DATA.password
+      );
 
       const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', t2Cookie)
-        .send(markPayload());
+        .post('/api/v1/teacher/assessments')
+        .set('Cookie', otherCookie)
+        .send({
+          classId,
+          subject: 'Science',
+          title: 'Sneaky Test',
+          maxMarks: 10,
+        });
 
       expect(res.statusCode).toBe(403);
     });
 
-    it('401 — unauthenticated request is rejected', async () => {
-      const res = await request(app)
-        .post('/api/v1/teacher/marks')
-        .send(markPayload());
+    it('allows two assessments of the same type in one subject', async () => {
+      // The defect the flat model had: its unique key was
+      // (student, subject, class, type), so the second class test overwrote the first.
+      const first = await createAssessment({ title: 'Unit Test 1' });
+      const second = await createAssessment({ title: 'Unit Test 2' });
 
+      expect(first.statusCode).toBe(201);
+      expect(second.statusCode).toBe(201);
+      expect(first.body.data.assessment._id).not.toBe(second.body.data.assessment._id);
+    });
+  });
+
+  describe('PUT /api/v1/teacher/assessments/:id/scores', () => {
+    it('200 — saves scores, remarks and absences', async () => {
+      const created = await createAssessment();
+      const id = created.body.data.assessment._id;
+
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({
+          scores: [{ studentId, marksObtained: 18, remarks: 'Good work' }],
+        });
+
+      expect(res.statusCode).toBe(200);
+      const row = res.body.data.students.find((r) => r.studentId === String(studentId));
+      expect(row.marksObtained).toBe(18);
+      expect(row.remarks).toBe('Good work');
+      expect(res.body.data.classAverage).toBeCloseTo(90, 1);
+    });
+
+    it('200 — an absent student stores no mark and is excluded from the average', async () => {
+      const created = await createAssessment();
+      const id = created.body.data.assessment._id;
+
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, absent: true }] });
+
+      expect(res.statusCode).toBe(200);
+      const row = res.body.data.students.find((r) => r.studentId === String(studentId));
+      expect(row.absent).toBe(true);
+      expect(row.marksObtained).toBeNull();
+      // Only student was absent, so there is nothing to average.
+      expect(res.body.data.classAverage).toBeNull();
+    });
+
+    it('422 — a score above maxMarks is rejected', async () => {
+      const created = await createAssessment({ maxMarks: 20 });
+      const id = created.body.data.assessment._id;
+
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, marksObtained: 21 }] });
+
+      expect(res.statusCode).toBe(422);
+    });
+
+    it('200 — a project scored out of 150 is accepted', async () => {
+      const created = await createAssessment({
+        title: 'Model Project',
+        assessmentType: 'project',
+        maxMarks: 150,
+      });
+      const id = created.body.data.assessment._id;
+
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, marksObtained: 128 }] });
+
+      expect(res.statusCode).toBe(200);
+      const row = res.body.data.students.find((r) => r.studentId === String(studentId));
+      expect(row.marksObtained).toBe(128);
+    });
+
+    it('re-saving updates in place rather than duplicating', async () => {
+      const created = await createAssessment();
+      const id = created.body.data.assessment._id;
+
+      await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, marksObtained: 12 }] });
+
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, marksObtained: 19 }] });
+
+      const rows = res.body.data.students.filter((r) => r.studentId === String(studentId));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].marksObtained).toBe(19);
+    });
+  });
+
+  describe('GET /api/v1/teacher/assessments', () => {
+    it('200 — lists own assessments with how many scores are entered', async () => {
+      const created = await createAssessment();
+      const id = created.body.data.assessment._id;
+      await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
+        .set('Cookie', teacherCookie)
+        .send({ scores: [{ studentId, marksObtained: 15 }] });
+
+      const res = await request(app)
+        .get('/api/v1/teacher/assessments')
+        .query({ classId })
+        .set('Cookie', teacherCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.assessments).toHaveLength(1);
+      expect(res.body.data.assessments[0].scoresEntered).toBe(1);
+    });
+
+    it('401 — unauthenticated request is rejected', async () => {
+      const res = await request(app).get('/api/v1/teacher/assessments');
       expect(res.statusCode).toBe(401);
     });
   });
 
-  // ── GET /api/v1/teacher/marks ─────────────────────────────────────────────
-
-  describe('GET /api/v1/teacher/marks', () => {
-    it('200 — returns marks for class + subject', async () => {
-      await request(app)
-        .post('/api/v1/teacher/marks')
-        .set('Cookie', teacherCookie)
-        .send(markPayload({ marksObtained: 75 }));
+  describe('PUT /api/v1/teacher/assessments/:id', () => {
+    it('200 — correcting the title fixes it for every student at once', async () => {
+      const created = await createAssessment({ title: 'Unit Tst 1' });
+      const id = created.body.data.assessment._id;
 
       const res = await request(app)
-        .get('/api/v1/teacher/marks')
+        .put(`/api/v1/teacher/assessments/${id}`)
         .set('Cookie', teacherCookie)
-        .query({ classId, subject: 'Science' });
+        .send({ title: 'Unit Test 1' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.data.marks).toHaveLength(1);
-      expect(res.body.data.marks[0].marksObtained).toBe(75);
+      expect(res.body.data.assessment.title).toBe('Unit Test 1');
     });
 
-    it('200 — returns empty array when no marks exist for subject', async () => {
-      const res = await request(app)
-        .get('/api/v1/teacher/marks')
+    it('422 — cannot lower maxMarks below a score already recorded', async () => {
+      const created = await createAssessment({ maxMarks: 20 });
+      const id = created.body.data.assessment._id;
+      await request(app)
+        .put(`/api/v1/teacher/assessments/${id}/scores`)
         .set('Cookie', teacherCookie)
-        .query({ classId, subject: 'History' });
+        .send({ scores: [{ studentId, marksObtained: 18 }] });
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data.marks).toHaveLength(0);
+      const res = await request(app)
+        .put(`/api/v1/teacher/assessments/${id}`)
+        .set('Cookie', teacherCookie)
+        .send({ maxMarks: 10 });
+
+      expect(res.statusCode).toBe(422);
+    });
+  });
+
+  describe('DELETE /api/v1/teacher/assessments/:id', () => {
+    it('204 — soft-deletes and removes it from the list', async () => {
+      const created = await createAssessment();
+      const id = created.body.data.assessment._id;
+
+      const del = await request(app)
+        .delete(`/api/v1/teacher/assessments/${id}`)
+        .set('Cookie', teacherCookie);
+      expect(del.statusCode).toBe(204);
+
+      const res = await request(app)
+        .get('/api/v1/teacher/assessments')
+        .set('Cookie', teacherCookie);
+      expect(res.body.data.assessments).toHaveLength(0);
     });
   });
 });
-
-// ── Announcements tests ───────────────────────────────────────────────────────
 
 describe('Teacher Announcements', () => {
   let teacherCookie;

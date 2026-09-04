@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import Layout from '../../components/common/Layout';
-import { getProfile, getAttendance, getMarks, getStudentAnnouncements } from '../../api/student.api';
+import { getProfile, getAttendance, getCoursework, getStudentAnnouncements } from '../../api/student.api';
 import useApi from '../../hooks/useApi';
 import useAuth from '../../hooks/useAuth';
 import { staggerContainer, fadeInUp, getVariants } from '../../utils/animationVariants';
 import calculatePercentage from '../../utils/calculatePercentage';
+import { assessmentTypeLabel } from '../../utils/assessmentTypes';
 import FeesCard from '../../components/student/FeesCard';
 import HomeworkCard from '../../components/student/HomeworkCard';
 import NotificationsPanel from '../../components/student/NotificationsPanel';
@@ -48,7 +49,7 @@ export default function StudentDashboard() {
 
   const profile = useApi(getProfile);
   const attendance = useApi(getAttendance);
-  const marks = useApi(getMarks);
+  const marks = useApi(getCoursework);
   const announcements = useApi(getStudentAnnouncements);
   const fees = useApi(getStudentFees);
   const homework = useApi(getStudentHomework);
@@ -64,7 +65,10 @@ export default function StudentDashboard() {
   }, []);
 
   const attendancePct = attendance.data?.data?.percentage ?? '—';
-  const latestMark = marks.data?.data?.marks?.[0];
+  // Coursework comes back grouped by subject; flatten and take the most recent.
+  const latestMark = (marks.data?.data?.subjects ?? [])
+    .flatMap((g) => g.entries)
+    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   const announcementCount = announcements.data?.data?.announcements?.length ?? 0;
 
   const staggerProps = getVariants(staggerContainer);
@@ -111,8 +115,12 @@ export default function StudentDashboard() {
                 ? `${latestMark.marksObtained}/${latestMark.maxMarks ?? 100}`
                 : '—'
             }
-            sub={latestMark ? `${latestMark.subject} · ${latestMark.examType}` : 'No marks yet'}
-            linkTo={`${base}/student/marks`}
+            sub={
+              latestMark
+                ? `${latestMark.subject} · ${latestMark.title}`
+                : 'No coursework yet'
+            }
+            linkTo={`${base}/student/coursework`}
           />
           <SummaryCard
             label="Timetable"
@@ -134,7 +142,7 @@ export default function StudentDashboard() {
             { label: 'My Profile', to: `${base}/student/profile` },
             { label: 'Timetable', to: `${base}/student/timetable` },
             { label: 'Attendance', to: `${base}/student/attendance` },
-            { label: 'Marks', to: `${base}/student/marks` },
+            { label: 'Coursework', to: `${base}/student/coursework` },
             { label: 'Announcements', to: `${base}/student/announcements` },
           ].map(({ label, to }) => (
             <Link

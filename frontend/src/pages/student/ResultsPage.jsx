@@ -68,7 +68,8 @@ export default function ResultsPage() {
       .then((res) => {
         const yr = res.data?.years ?? [];
         setYears(yr);
-        if (yr.length > 0) setSelectedYear(yr[yr.length - 1]);
+        // getDistinctYears returns descending — index 0 is the newest year.
+        if (yr.length > 0) setSelectedYear(yr[0]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -133,7 +134,7 @@ export default function ResultsPage() {
   return (
     <Layout role="student">
       <div className="p-6">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">My Results</h1>
+      <h1 className="text-xl font-bold text-gray-800 mb-6">Report Cards</h1>
 
       {years.length === 0 ? (
         <EmptyState

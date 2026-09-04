@@ -357,10 +357,11 @@ GET    /api/v1/parent/children/:studentId/notifications
 | `ClassTeacher` | `schoolId`, `classId`, `teacherId` |
 | `Timetable` | `schoolId`, `classId`, `day`, `period`, `subject`, `teacherId` |
 | `Attendance` | `schoolId`, `classId`, `date`, `records[]` (studentId + status) |
-| `Marks` | `schoolId`, `studentId`, `classId`, `subject`, `marks`, `totalMarks` |
+| `Assessment` (Coursework) | `schoolId`, `classId`, `subject`, `title`, `assessmentType` (class_test/quiz/assignment/project/practical), `maxMarks`, `date` (conducted), `academicYear`, `createdBy` — one row per classroom event; **never term exams** |
+| `AssessmentScore` | `schoolId`, `assessmentId`, `studentId`, `marksObtained` (null when absent), `absent`, `remarks` — unique per (assessment, student) |
 | `Exam` | `schoolId`, `classId`, `name`, `year`, `term`, `subjects[]`, `state` |
-| `SubjectSubmission` | `examId`, `teacherId`, `subject`, `marks[]`, `status` (draft/submitted/accepted/reopened) |
-| `Result` | `schoolId`, `examId`, `studentId`, `subjectResults[]`, `totalMarks`, `percentage`, `grade` |
+| `SubjectSubmission` | `schoolId`, `examId`, `classId`, `subject`, `totalMarks`, `passMark`, `assignedTeacherId`, `marks[]`, `state` (pending/draft/submitted/locked) |
+| `Result` | `schoolId`, `examId`, `studentId`, `marks[]` (subject + marksObtained), `overallPercentage`, `rank`, `published` |
 | `Fee` | `schoolId`, `studentId`, `amount`, `dueDate`, `status` (pending/paid/overdue/waived) |
 | `FeeConfig` | `schoolId`, `classId`, `label`, `amount`, `dueDate` — template for bulk-generating fees |
 | `Homework` | `schoolId`, `classId`, `teacherId`, `title`, `description`, `attachmentUrl`, `dueDate` |
@@ -368,6 +369,15 @@ GET    /api/v1/parent/children/:studentId/notifications
 | `Notification` | `schoolId`, `userId`, `message`, `isRead` |
 | `ParentStudentLink` | `parentId`, `studentId`, `schoolId` |
 | `PasswordResetToken` | `userId`, `tokenHash`, `expiresAt` |
+
+> **Coursework vs. Report Cards.** Two separate assessment concepts, deliberately not merged:
+> **Coursework** (`Assessment` + `AssessmentScore`) is formative — class tests, quizzes, assignments,
+> projects, practicals. A teacher creates a titled, dated assessment, then enters a mark, an optional
+> remark and an absent flag per student. Visible to the student and parent immediately, no admin step.
+> **Report Cards** (`Exam` → `SubjectSubmission` → `Result`) are summative — term exams entered by
+> teachers, gated on every subject being submitted, then published by an admin, which is what makes
+> them visible and computes ranks. A teacher cannot record a term exam through Coursework.
+> See `specs/008-coursework-report-cards/` and `specs/009-coursework-assessments/`.
 
 ---
 

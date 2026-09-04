@@ -15,7 +15,12 @@ const {
   markAttendance,
   getAttendance,
 } = require('../controllers/teacher/attendance.controller');
-const { saveMark, getMarks } = require('../controllers/teacher/marks.controller');
+const assessmentController = require('../controllers/teacher/assessment.controller');
+const {
+  createAssessmentValidator,
+  updateAssessmentValidator,
+  saveScoresValidator,
+} = require('../validators/assessment.validator');
 const {
   createAnnouncement,
   getAnnouncements,
@@ -43,9 +48,34 @@ router.get('/classes/:classId/students', getClassStudents);
 router.post('/attendance', teacherWrite, markAttendance);
 router.get('/attendance', getAttendance);
 
-// ── Marks — part of the exam/result module, gated like the exam routes ───────
-router.post('/marks', teacherWrite, examsFeature, saveMark);
-router.get('/marks', examsFeature, getMarks);
+// ── Coursework assessments — teacher-owned, no admin publish step ────────────
+router.post(
+  '/assessments',
+  examsFeature,
+  teacherWrite,
+  createAssessmentValidator,
+  validate,
+  assessmentController.create
+);
+router.get('/assessments', examsFeature, assessmentController.list);
+router.get('/assessments/:id', examsFeature, assessmentController.getOne);
+router.put(
+  '/assessments/:id',
+  examsFeature,
+  teacherWrite,
+  updateAssessmentValidator,
+  validate,
+  assessmentController.update
+);
+router.delete('/assessments/:id', examsFeature, teacherWrite, assessmentController.remove);
+router.put(
+  '/assessments/:id/scores',
+  examsFeature,
+  teacherWrite,
+  saveScoresValidator,
+  validate,
+  assessmentController.saveScores
+);
 
 // ── Exam subject submissions (005 flow) — gated by EXAMS_RESULTS feature ─────
 router.get('/exams', examsFeature, subjectSubmissionController.listMyExams);

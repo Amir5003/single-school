@@ -1,5 +1,5 @@
 /**
- * Unit tests for attendance.service.js and marks.service.js edge cases.
+ * Unit tests for attendance.service.js edge cases.
  * Relies on the in-memory MongoDB replica set started in tests/setup.js.
  */
 
@@ -14,10 +14,8 @@ const Teacher = require('../../src/models/Teacher.model');
 const Class = require('../../src/models/Class.model');
 const ClassTeacher = require('../../src/models/ClassTeacher.model');
 const Attendance = require('../../src/models/Attendance.model');
-const Marks = require('../../src/models/Marks.model');
 
 const { markBulkAttendance } = require('../../src/services/attendance.service');
-const { upsertMark } = require('../../src/services/marks.service');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -136,80 +134,5 @@ describe('attendance.service — markBulkAttendance', () => {
   });
 });
 
-// ── Marks service edge cases ──────────────────────────────────────────────────
 
-describe('marks.service — upsertMark', () => {
-  it('throws ApiError(403) when teacher is not assigned to the class', async () => {
-    const otherUser = await User.create({
-      name: 'Other2',
-      email: `other2-${Date.now()}@unit.test`,
-      password: 'Passw0rd!',
-      role: 'teacher',
-      schoolId,
-    });
-    const otherTeacher = await Teacher.create({ userId: otherUser._id, schoolId, employeeId: 'OTHER02' });
-    await expect(
-      upsertMark(
-        { studentId, classId, subject: 'Math', examType: 'final', marksObtained: 80 },
-        otherTeacher._id,
-        schoolId
-      )
-    ).rejects.toMatchObject({ statusCode: 403 });
-  });
 
-  it('creates a new mark record', async () => {
-    const mark = await upsertMark(
-      { studentId, classId, subject: 'Math', examType: 'final', marksObtained: 85 },
-      teacherId,
-      schoolId
-    );
-    expect(mark.marksObtained).toBe(85);
-    const count = await Marks.countDocuments({ studentId, classId });
-    expect(count).toBe(1);
-  });
-
-  it('updates an existing mark record (upsert)', async () => {
-    await upsertMark(
-      { studentId, classId, subject: 'Math', examType: 'final', marksObtained: 70 },
-      teacherId,
-      schoolId
-    );
-    const updated = await upsertMark(
-      { studentId, classId, subject: 'Math', examType: 'final', marksObtained: 90 },
-      teacherId,
-      schoolId
-    );
-    expect(updated.marksObtained).toBe(90);
-    const count = await Marks.countDocuments({ studentId, classId, subject: 'Math' });
-    expect(count).toBe(1); // still only one doc
-  });
-
-  it('rejects marksObtained above 100 via schema validator', async () => {
-    await expect(
-      upsertMark(
-        { studentId, classId, subject: 'Math', examType: 'final', marksObtained: 101 },
-        teacherId,
-        schoolId
-      )
-    ).rejects.toBeDefined();
-  });
-
-  it('rejects negative marksObtained via schema validator', async () => {
-    await expect(
-      upsertMark(
-        { studentId, classId, subject: 'Math', examType: 'final', marksObtained: -1 },
-        teacherId,
-        schoolId
-      )
-    ).rejects.toBeDefined();
-  });
-
-  it('defaults examType to "final" when not provided', async () => {
-    const mark = await upsertMark(
-      { studentId, classId, subject: 'Science', marksObtained: 75 },
-      teacherId,
-      schoolId
-    );
-    expect(mark.examType).toBe('final');
-  });
-});

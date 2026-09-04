@@ -33,16 +33,16 @@ const getChildAttendance = async (req, res, next) => {
 };
 
 /**
- * GET /api/v1/parent/children/:studentId/marks
+ * GET /api/v1/parent/children/:studentId/coursework
  */
-const getChildMarks = async (req, res, next) => {
+const getChildCoursework = async (req, res, next) => {
   try {
-    const marks = await parentService.getChildMarks(
+    const data = await parentService.getChildCoursework(
       req.user._id,
       req.params.studentId,
       req.school._id
     );
-    return res.status(200).json(new ApiResponse(200, { marks }, 'Marks retrieved'));
+    return res.status(200).json(new ApiResponse(200, data, 'Coursework retrieved'));
   } catch (err) {
     return next(err);
   }
@@ -98,11 +98,82 @@ const getChildNotifications = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/parent/children/:studentId/exam-years
+ */
+const getChildExamYears = async (req, res, next) => {
+  try {
+    const years = await parentService.getChildExamYears(
+      req.user._id,
+      req.params.studentId,
+      req.school._id
+    );
+    return res.status(200).json(new ApiResponse(200, { years }, 'Exam years retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * GET /api/v1/parent/children/:studentId/exams
+ */
+const getChildExams = async (req, res, next) => {
+  try {
+    const exams = await parentService.getChildExams(
+      req.user._id,
+      req.params.studentId,
+      req.school._id,
+      req.query.year
+    );
+    return res.status(200).json(new ApiResponse(200, { exams }, 'Exams retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * GET /api/v1/parent/children/:studentId/results
+ */
+const getChildResult = async (req, res, next) => {
+  try {
+    const result = await parentService.getChildResult(
+      req.user._id,
+      req.params.studentId,
+      req.school._id,
+      req.query.examId
+    );
+    return res.status(200).json(new ApiResponse(200, result, 'Result retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * GET /api/v1/parent/children/:studentId/results/:examId/report-card
+ */
+const getChildReportCard = async (req, res, next) => {
+  try {
+    const payload = await parentService.getChildReportCard(
+      req.user._id,
+      req.params.studentId,
+      req.school._id,
+      req.params.examId
+    );
+    return res.status(200).json(new ApiResponse(200, payload, 'Report card retrieved'));
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   getChildren,
   getChildAttendance,
-  getChildMarks,
+  getChildCoursework,
   getChildFees,
   getChildHomework,
   getChildNotifications,
+  getChildExamYears,
+  getChildExams,
+  getChildResult,
+  getChildReportCard,
 };

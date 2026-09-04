@@ -4,15 +4,18 @@ import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   getChildAttendance,
-  getChildMarks,
+  getChildCoursework,
   getChildFees,
   getChildHomework,
   getChildNotifications,
+  getChildExams,
+  getChildResult,
 } from '../../api/parent.api';
 import { selectSchoolSlug } from '../../redux/slices/authSlice';
 import { slideInRight } from '../../utils/animationVariants';
+import { assessmentTypeLabel } from '../../utils/assessmentTypes';
 
-const TABS = ['Attendance', 'Marks', 'Fees', 'Homework', 'Notifications'];
+const TABS = ['Attendance', 'Coursework', 'Report Cards', 'Fees', 'Homework', 'Notifications'];
 
 const STATUS_COLOR = {
   Present: 'bg-green-100 text-green-700',
@@ -41,7 +44,20 @@ export default function ChildDetail() {
     if (data[activeTab]) return; // cache per tab
     const fetchers = {
       Attendance: () => getChildAttendance(studentId).then((r) => r.data.attendance),
-      Marks: () => getChildMarks(studentId).then((r) => r.data.marks),
+      Coursework: () => getChildCoursework(studentId).then((r) => r.data.subjects),
+      'Report Cards': async () => {
+        // Published exams only; each row carries the child's own result.
+        const { data } = await getChildExams(studentId);
+        const exams = data.exams || [];
+        const settled = await Promise.all(
+          exams.map((exam) =>
+            getChildResult(studentId, exam._id)
+              .then((r) => ({ exam, result: r.data }))
+              .catch(() => null)
+          )
+        );
+        return settled.filter(Boolean);
+      },
       Fees: () => getChildFees(studentId).then((r) => r.data.fees),
       Homework: () => getChildHomework(studentId).then((r) => r.data.homework),
       Notifications: () => getChildNotifications(studentId).then((r) => r.data.notifications),
@@ -73,14 +89,74 @@ export default function ChildDetail() {
       ));
     }
 
-    if (activeTab === 'Marks') {
-      return items.map((m) => (
-        <div key={m._id} className="flex items-center justify-between py-2 border-b border-gray-100">
-          <div>
-            <p className="text-sm font-medium text-gray-800">{m.subject}</p>
-            <p className="text-xs text-gray-500">{m.examType}</p>
+    if (activeTab === 'Coursework') {
+      // Grouped by subject, same shape the student sees.
+      return items.map((group) => (
+        <div key={group.subject} className="py-3 border-b border-gray-100 last:border-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-gray-800">{group.subject}</p>
+            {group.average !== null && (
+              <span className="text-sm font-bold text-indigo-700">{group.average}%</span>
+            )}
           </div>
-          <span className="text-sm font-bold text-gray-900">{m.marksObtained}/{m.totalMarks}</span>
+          {group.entries.map((e) => (
+            <div
+              key={e._id}
+              className="flex items-start justify-between gap-3 py-1 pl-3 border-l-2 border-gray-100"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-700">{e.title}</p>
+                <p className="text-[11px] text-gray-400">
+                  {assessmentTypeLabel(e.assessmentType)} · {formatDate(e.date)}
+                  {e.teacherName ? ` · ${e.teacherName}` : ''}
+                </p>
+                {e.remarks ? (
+                  <p className="text-[11px] text-gray-500 italic mt-0.5">“{e.remarks}”</p>
+                ) : null}
+              </div>
+              <span className="text-xs font-bold text-gray-900 flex-none tabular-nums">
+                {e.absent ? 'Absent' : `${e.marksObtained}/${e.maxMarks}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      ));
+    }
+
+    if (activeTab === 'Report Cards') {
+      return items.map(({ exam, result }) => (
+        <div key={exam._id} className="py-3 border-b border-gray-100 last:border-0">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">{exam.name}</p>
+              <p className="text-xs text-gray-500">
+                {exam.term} · {exam.year}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-gray-900">
+                {result.overallPercentage}%
+              </p>
+              {result.rank != null && (
+                <p className="text-xs text-gray-500">Rank {result.rank}</p>
+              )}
+            </div>
+          </div>
+          {(result.marks || []).map((m) => (
+            <div
+              key={m.subject}
+              className="flex items-center justify-between py-1 pl-3 border-l-2 border-gray-100"
+            >
+              <span className="text-xs text-gray-600">{m.subject}</span>
+              <span
+                className={`text-xs font-medium ${
+                  m.passed ? 'text-green-700' : 'text-red-600'
+                }`}
+              >
+                {m.marksObtained}/{m.totalMarks}
+              </span>
+            </div>
+          ))}
         </div>
       ));
     }

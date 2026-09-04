@@ -6,7 +6,7 @@ const {
   getProfile,
   getTimetable,
   getAttendance,
-  getMarks,
+  getCoursework,
   getAnnouncements,
 } = require('../controllers/student/student.controller');
 const feeController = require('../controllers/fee.controller');
@@ -33,8 +33,8 @@ const examsFeature = checkFeatureAccess(FEATURES.EXAMS_RESULTS);
 router.get('/profile',       getProfile);
 router.get('/timetable',     getTimetable);
 router.get('/attendance',    getAttendance);
-// Marks are part of the exam/result module — gated like the results routes.
-router.get('/marks',         examsFeature, getMarks);
+// Coursework is part of the exam/result module — gated like the results routes.
+router.get('/coursework',    examsFeature, getCoursework);
 router.get('/announcements', getAnnouncements);
 router.get('/fees', feeController.getMyFees);
 router.get('/homework', homeworkController.getStudentHomework);

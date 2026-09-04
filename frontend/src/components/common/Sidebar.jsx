@@ -46,7 +46,7 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
     teacher: [
       { label: 'Dashboard',      to: `${base}/teacher/dashboard` },
       { label: 'Attendance',     to: `${base}/teacher/attendance` },
-      { label: 'Marks',          to: `${base}/teacher/marks`, requires: FEATURES.EXAMS_RESULTS },
+      { label: 'Coursework',     to: `${base}/teacher/coursework`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'My Exams',       to: `${base}/teacher/my-exams`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/teacher/announcements` },
     ],
@@ -55,8 +55,8 @@ export default function Sidebar({ role, isOpen = false, onClose = () => {} }) {
       { label: 'Profile',        to: `${base}/student/profile` },
       { label: 'Timetable',      to: `${base}/student/timetable` },
       { label: 'Attendance',     to: `${base}/student/attendance` },
-      { label: 'Marks',          to: `${base}/student/marks`, requires: FEATURES.EXAMS_RESULTS },
-      { label: 'My Results',     to: `${base}/student/results`, requires: FEATURES.EXAMS_RESULTS },
+      { label: 'Coursework',     to: `${base}/student/coursework`, requires: FEATURES.EXAMS_RESULTS },
+      { label: 'Report Cards',   to: `${base}/student/results`, requires: FEATURES.EXAMS_RESULTS },
       { label: 'Announcements',  to: `${base}/student/announcements` },
     ],
     parent: [

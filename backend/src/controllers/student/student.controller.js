@@ -3,7 +3,7 @@ const {
   getStudentProfile,
   getStudentTimetable,
   getStudentAttendance,
-  getStudentMarks,
+  getStudentCoursework,
   getStudentAnnouncements,
 } = require('../../services/student.service');
 
@@ -53,15 +53,17 @@ const getAttendance = async (req, res, next) => {
   }
 };
 
-// ── GET /api/v1/student/marks ─────────────────────────────────────────────────
+// ── GET /api/v1/student/coursework ────────────────────────────────────────────
 
 /**
- * Return all marks + overall percentage for the authenticated student.
+ * Return coursework grouped by subject for the authenticated student.
  */
-const getMarks = async (req, res, next) => {
+const getCoursework = async (req, res, next) => {
   try {
-    const data = await getStudentMarks(req.user._id, req.school._id);
-    res.json(new ApiResponse(200, data, 'Marks retrieved successfully'));
+    const data = await getStudentCoursework(req.user._id, req.school._id, {
+      academicYear: req.query.academicYear,
+    });
+    res.json(new ApiResponse(200, data, 'Coursework retrieved successfully'));
   } catch (err) {
     next(err);
   }
@@ -81,4 +83,4 @@ const getAnnouncements = async (req, res, next) => {
   }
 };
 
-module.exports = { getProfile, getTimetable, getAttendance, getMarks, getAnnouncements };
+module.exports = { getProfile, getTimetable, getAttendance, getCoursework, getAnnouncements };
