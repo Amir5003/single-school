@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import axiosInstance from '../api/axiosInstance';
 import { showToast } from '../redux/slices/uiSlice';
-import { selectSchoolSlug } from '../redux/slices/authSlice';
+import { selectSchoolSlug, selectUser } from '../redux/slices/authSlice';
+import { selectSchoolName } from '../redux/slices/schoolSlice';
 import { fadeInUp } from '../utils/animationVariants';
 
 export default function ChangePassword() {
@@ -13,6 +14,16 @@ export default function ChangePassword() {
   const { slug: urlSlug } = useParams();
   const reduxSlug = useSelector(selectSchoolSlug);
   const schoolSlug = urlSlug ?? reduxSlug;
+  const user = useSelector(selectUser);
+  const schoolName = useSelector(selectSchoolName);
+
+  // Every account an administrator creates is forced through this screen —
+  // student.service.js and teacher.service.js both set mustChangePassword.
+  // It is therefore the one moment we can be certain the person themselves is
+  // reading, which makes it the right place to deliver the privacy notice they
+  // never got a chance to see when their account was created.
+  // Returning users who change a password voluntarily are not shown it.
+  const showNotice = Boolean(user?.mustChangePassword);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]           = useState('');
@@ -53,6 +64,32 @@ export default function ChangePassword() {
           <h1 className="text-2xl font-bold text-gray-800">Change Password</h1>
           <p className="text-gray-500 text-sm mt-1">Please set a new password for your account</p>
         </div>
+
+        {showNotice && (
+          <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+            <h2 className="text-sm font-semibold text-indigo-900 mb-1.5">
+              Your school set up this account
+            </h2>
+            <p className="text-xs text-indigo-800/90 leading-relaxed">
+              {schoolName || 'Your school'} created this account and holds your name, contact
+              details, class, attendance, marks and fee records here. We keep it secure for the
+              school and use it for nothing else — there is no advertising or tracking in this
+              product, and your data is never sold.
+            </p>
+            <p className="text-xs text-indigo-800/90 leading-relaxed mt-2">
+              To see, correct or remove anything held about you, contact your school.{' '}
+              <Link
+                to="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline"
+              >
+                Read the full privacy notice
+              </Link>
+              .
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">

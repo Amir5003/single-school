@@ -11,6 +11,9 @@ import Home from './pages/Home';
 import Onboarding from './pages/Onboarding';
 import SchoolLanding from './pages/SchoolLanding';
 import SchoolNotFoundPage from './pages/SchoolNotFoundPage';
+import Terms from './pages/legal/Terms';
+import Privacy from './pages/legal/Privacy';
+import Refunds from './pages/legal/Refunds';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ChangePassword from './pages/ChangePassword';
@@ -140,6 +143,19 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/school-not-found" element={<SchoolNotFoundPage />} />
+
+        {/* Legal documents — public, unauthenticated, and deliberately NOT
+            under /schools/:slug. They describe the platform operator's
+            obligations and are identical for every tenant; serving them
+            per-slug would imply each school has its own terms, and would make
+            them unreachable to a visitor who does not know a slug. */}
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/refunds" element={<Refunds />} />
+        {/* Superseded versions stay reachable: a recorded acceptance is
+            worthless if the accepted text can no longer be read. */}
+        <Route path="/terms/v/:version" element={<Terms />} />
+        <Route path="/privacy/v/:version" element={<Privacy />} />
 
         {/* Platform — super-admin only, no slug */}
         <Route

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import TermsAcceptance from '../components/common/TermsAcceptance';
 import { motion, AnimatePresence } from 'framer-motion';
 import { registerUser } from '../api/auth.api';
 import { checkSlugAvailability, registerSchool } from '../api/onboarding.api';
@@ -94,6 +95,7 @@ function SchoolAdminForm({ onSuccess }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const debounceRef = useRef(null);
 
   const handleChange = (e) => {
@@ -130,6 +132,12 @@ function SchoolAdminForm({ onSuccess }) {
       setFieldErrors((prev) => ({ ...prev, slug: 'Please enter an available slug' }));
       return;
     }
+    // The server rejects this too — the disabled button is a courtesy, not the
+    // enforcement.
+    if (!acceptedTerms) {
+      setError('Please accept the Terms of Service and Privacy Notice to continue');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -139,6 +147,7 @@ function SchoolAdminForm({ onSuccess }) {
         adminEmail: form.adminEmail,
         adminPassword: form.adminPassword,
         phone: form.phone || undefined,
+        acceptedTerms: true,
       });
       onSuccess();
     } catch (err) {
@@ -211,9 +220,11 @@ function SchoolAdminForm({ onSuccess }) {
         value={form.adminPassword} onChange={handleChange} error={fieldErrors.adminPassword}
         placeholder="Min 8 chars, uppercase, digit, symbol" />
 
+      <TermsAcceptance checked={acceptedTerms} onChange={setAcceptedTerms} />
+
       <button
         type="submit"
-        disabled={loading || slugStatus !== 'available'}
+        disabled={loading || slugStatus !== 'available' || !acceptedTerms}
         className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 text-sm transition disabled:opacity-50"
       >
         {loading ? 'Submitting…' : 'Register School'}

@@ -40,6 +40,14 @@ const authSlice = createSlice({
     setEntitlements: (state, action) => {
       state.entitlements = action.payload ?? null;
     },
+    // Patch fields on the signed-in user without touching role, schoolId,
+    // schoolSlug or entitlements. `setCredentials` overwrites all of those
+    // from its payload, so using it for a partial update silently logs the
+    // user out of their school context.
+    updateUser: (state, action) => {
+      if (!state.user) return;
+      state.user = { ...state.user, ...action.payload };
+    },
     clearCredentials: (state) => {
       state.user = null;
       state.role = null;
@@ -51,7 +59,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, setEntitlements, clearCredentials } = authSlice.actions;
+export const { setCredentials, setEntitlements, updateUser, clearCredentials } = authSlice.actions;
 
 // Selectors
 export const selectUser = (state) => state.auth.user;

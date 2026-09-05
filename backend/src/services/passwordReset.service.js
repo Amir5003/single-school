@@ -79,6 +79,11 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   // Assign plain-text password; pre('save') will hash it once.
   user.password = newPassword;
   user.mustChangePassword = false;
+  // Recorded in the SAME save as clearing mustChangePassword. The forced
+  // password-change screen is where the privacy notice is shown, so the two
+  // facts describe one event — splitting the writes would allow a user who
+  // changed their password but is recorded as never having seen the notice.
+  user.noticeAckedAt = new Date();
   await user.save({ validateBeforeSave: false });
 };
 

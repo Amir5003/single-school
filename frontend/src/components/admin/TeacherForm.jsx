@@ -115,6 +115,15 @@ export default function TeacherForm({
         </p>
       )}
 
+      {/* Standing notice — see the equivalent note in StudentForm.jsx. */}
+      {!isEdit && (
+        <p className="text-xs text-gray-500 leading-relaxed rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
+          This creates an account in this person&apos;s name and emails a temporary password to the
+          address you enter. Confirm the address belongs to them, and make sure they have been told
+          their records are held here.
+        </p>
+      )}
+
       <button
         type="submit"
         disabled={loading}

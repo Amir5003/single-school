@@ -242,13 +242,24 @@ export default function SchoolLanding() {
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-xs text-gray-400">{schoolName}</span>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} All rights reserved.</p>
-          <Link
-            to={`/schools/${slug}/login`}
-            className="text-xs font-medium hover:opacity-80 transition-opacity"
-            style={{ color: primary }}
-          >
-            Login →
-          </Link>
+          <nav className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-xs text-gray-400">
+            {/* A parent following a link from a credentials email is most
+                likely to land here, so the privacy notice must be reachable
+                from this page in particular. */}
+            <Link to="/privacy" className="hover:text-gray-700 transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-gray-700 transition-colors">
+              Terms
+            </Link>
+            <Link
+              to={`/schools/${slug}/login`}
+              className="font-medium hover:opacity-80 transition-opacity"
+              style={{ color: primary }}
+            >
+              Login →
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

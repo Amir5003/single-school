@@ -6,6 +6,7 @@ import ConfirmModal from '../../components/common/ConfirmModal';
 import StatusMessage from '../../components/common/StatusMessage';
 import Avatar from '../../components/common/Avatar';
 import StudentForm from '../../components/admin/StudentForm';
+import DataResponsibilityGate from '../../components/admin/DataResponsibilityGate';
 import {
   getStudents,
   createStudent,
@@ -415,18 +416,22 @@ export default function StudentsPage() {
             {apiErrors._form && <StatusMessage message={apiErrors._form} type="error" />}
 
             <div className={apiErrors._form ? 'mt-4' : ''}>
-              <StudentForm
-                initialData={editStudent}
-                onSubmit={handleFormSubmit}
-                loading={formLoading}
-                classes={classes}
-                apiErrors={
-                  // Don't pass _form key into individual field errors
-                  Object.fromEntries(
-                    Object.entries(apiErrors).filter(([k]) => k !== '_form')
-                  )
-                }
-              />
+              {/* The one-time acknowledgement gates only the CREATE form: an
+                  admin editing an existing record is not adding anyone new. */}
+              <DataResponsibilityGate skip={Boolean(editStudent)}>
+                <StudentForm
+                  initialData={editStudent}
+                  onSubmit={handleFormSubmit}
+                  loading={formLoading}
+                  classes={classes}
+                  apiErrors={
+                    // Don't pass _form key into individual field errors
+                    Object.fromEntries(
+                      Object.entries(apiErrors).filter(([k]) => k !== '_form')
+                    )
+                  }
+                />
+              </DataResponsibilityGate>
             </div>
           </div>
         </div>

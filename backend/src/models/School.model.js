@@ -98,6 +98,22 @@ const subscriptionSchema = new Schema(
   { _id: false }
 );
 
+const legalSchema = new Schema(
+  {
+    // Which published version the school accepted. A string, not a boolean —
+    // a boolean cannot answer "which schools still need to accept 2.0?".
+    // Always stamped from backend/src/constants/legalVersions.js, never from
+    // the request body.
+    termsVersion: { type: String, default: null },
+    privacyVersion: { type: String, default: null },
+    termsAcceptedAt: { type: Date, default: null },
+    // Who bound the school. The admin created in the same transaction.
+    termsAcceptedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    termsAcceptedIp: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const schoolSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -118,6 +134,7 @@ const schoolSchema = new Schema(
     isActive: { type: Boolean, default: false },
     branding: { type: brandingSchema, default: () => ({}) },
     subscription: { type: subscriptionSchema, default: () => ({}) },
+    legal: { type: legalSchema, default: () => ({}) },
   },
   { timestamps: true }
 );

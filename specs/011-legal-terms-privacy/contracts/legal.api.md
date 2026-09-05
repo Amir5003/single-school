@@ -34,7 +34,7 @@ Public. Registers a school and its admin. **Now requires explicit acceptance.**
 | Status | When | Body |
 |---|---|---|
 | `201` | Created | Unchanged shape. **Do not add `legal` to the response** — the client has no use for it and it is evidential data. |
-| `400` | `acceptedTerms` absent, `false`, or not a boolean | `{ "success": false, "message": "You must accept the Terms of Service and Privacy Notice to register a school" }` via the existing `validate` middleware |
+| `422` | `acceptedTerms` absent, `false`, or not a boolean | `{ "success": false, "message": "You must accept the Terms of Service and Privacy Notice to register a school" }` via the existing `validate` middleware. **422, not 400** — that is what this repo's `validate` middleware already returns for every other endpoint, and the existing tests assert it. |
 | `409` | Slug or email taken | Unchanged |
 
 ### Side effect

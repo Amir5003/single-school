@@ -5,6 +5,7 @@ const Student = require('../models/Student.model');
 // Class model must be registered before any Student.populate('classId') call
 const Class = require('../models/Class.model');
 const Timetable = require('../models/Timetable.model');
+const School = require('../models/School.model');
 const Attendance = require('../models/Attendance.model');
 const assessmentService = require('./assessment.service');
 const Announcement = require('../models/Announcement.model');
@@ -169,10 +170,22 @@ const createStudent = async (data, schoolId) => {
     );
   });
 
-  // Fire-and-forget email — never block the response
-  setImmediate(() => {
+  // Fire-and-forget email — never block the response.
+  // The school name is looked up here rather than threaded through the service
+  // signature: this runs after the response is sent, so the extra indexed read
+  // costs the caller nothing, and every existing call site keeps working.
+  setImmediate(async () => {
     const emailService = require('./email.service');
-    emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
+    let schoolName;
+    try {
+      const school = await School.findById(schoolId).select('name').lean();
+      schoolName = school?.name;
+    } catch (err) {
+      // A missing school name only softens the notice wording — never a reason
+      // to withhold the credentials email.
+      logger.error(`[student.service] school name lookup failed for ${schoolId}: ${err.message}`);
+    }
+    emailService.sendTempPassword(email, name, tempPassword, schoolName).catch((err) => {
       logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
     });
   });

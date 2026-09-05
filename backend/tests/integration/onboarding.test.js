@@ -6,8 +6,14 @@ const app = require('../../src/app');
 const slugCheck = (slug) =>
   request(app).get(`/api/v1/onboarding/slug-check?slug=${slug}`);
 
+// Registration now requires explicit acceptance of the Terms (011). These
+// tests exercise slug/email/password logic, not the acceptance gate, so the
+// helper supplies it by default — a caller can still override it to test the
+// gate itself (see legal.acceptance.test.js).
 const registerSchool = (data) =>
-  request(app).post('/api/v1/onboarding/register').send(data);
+  request(app)
+    .post('/api/v1/onboarding/register')
+    .send({ acceptedTerms: true, ...data });
 
 const loginUser = async (email, password) => {
   const res = await request(app)
