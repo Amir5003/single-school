@@ -7,7 +7,7 @@ function AnnouncementCard({ announcement }) {
     <motion.div
       variants={scaleIn}
       {...getVariants(scaleIn)}
-      className="backdrop-blur-sm bg-white/70 rounded-2xl shadow-sm border border-white/20 p-5"
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
     >
       <div className="flex items-start justify-between gap-4 mb-2">
         <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">

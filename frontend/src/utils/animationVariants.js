@@ -10,11 +10,15 @@ export const fadeInUp = prefersReducedMotion
       exit: { opacity: 0, y: -10 },
     };
 
+// 0.1s per child put the 30th row of an attendance list three seconds into
+// its entrance, and the animation was still running — and still costing
+// frames — while the user was already trying to scroll. 0.04 keeps the
+// cascade visible while pulling that tail under a second.
 export const staggerContainer = prefersReducedMotion
   ? {}
   : {
       hidden: {},
-      visible: { transition: { staggerChildren: 0.1 } },
+      visible: { transition: { staggerChildren: 0.04 } },
     };
 
 export const slideInRight = prefersReducedMotion

@@ -238,7 +238,7 @@ export default function SchoolLanding() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 py-6 bg-white">
+      <footer className="border-t border-gray-100 py-6 bg-white pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))]">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-xs text-gray-400">{schoolName}</span>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} All rights reserved.</p>
