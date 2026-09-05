@@ -121,13 +121,11 @@ describe('POST /api/v1/admin/students — create', () => {
     );
   });
 
-  it('422 — missing enrollmentId', async () => {
+  it('201 — a missing enrollmentId is allocated by the server', async () => {
     const { enrollmentId: _e, ...noId } = STUDENT_BASE;
     const res = await createStudent(cookie, noId);
-    expect(res.statusCode).toBe(422);
-    expect(res.body.errors).toEqual(
-      expect.arrayContaining([expect.objectContaining({ field: 'enrollmentId' })])
-    );
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.student.enrollmentId).toMatch(/^\d{2}-\d{6}$/);
   });
 
   it('422 — missing dateOfBirth', async () => {
@@ -193,8 +191,8 @@ describe('GET /api/v1/admin/students — list', () => {
 
   /**
    * Create a class with STU-001 assigned to it and STU-002 left unassigned.
-   * POST /students ignores a classId in the body, so the assignment goes
-   * through the dedicated assign-students endpoint.
+   * Neither create call passes a classId, so both students start unassigned
+   * and the assignment goes through the dedicated assign-students endpoint.
    */
   const seedClassAndStudents = async (ck) => {
     const clsRes = await request(app)
@@ -301,6 +299,156 @@ describe('PUT /api/v1/admin/students/:id — update', () => {
 
     const getRes = await getStudentById(cookie, studentId);
     expect(getRes.body.data.student.userId.phone).toBe('9998887777');
+  });
+});
+
+describe('POST /api/v1/admin/students — class assignment', () => {
+  let cookie;
+
+  const makeClass = (ck, overrides = {}) =>
+    request(app)
+      .post('/api/v1/admin/classes')
+      .set('Cookie', ck)
+      .send({ name: 'Grade 5', grade: '5', section: 'A', academicYear: '2024-2025', ...overrides });
+
+  beforeEach(async () => {
+    cookie = await getAdminCookie();
+  });
+
+  it('201 — assigns the student to the class in the same request', async () => {
+    const cls = await makeClass(cookie);
+    const classId = cls.body.data.class._id;
+
+    const res = await createStudent(cookie, { ...STUDENT_BASE, classId });
+    expect(res.statusCode).toBe(201);
+    expect(String(res.body.data.student.classId)).toBe(classId);
+
+    // ...and it shows up under the class filter without a second call
+    const list = await getStudents(cookie, `?classId=${classId}`);
+    expect(list.body.data.students).toHaveLength(1);
+  });
+
+  it('201 — a student can still be created with no class (school has none yet)', async () => {
+    const res = await createStudent(cookie, STUDENT_BASE);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.student.classId).toBeNull();
+  });
+
+  it('404 — a class from another school is rejected', async () => {
+    // A class owned by a different tenant must never be assignable.
+    const otherSchool = await createSchool({ slug: `other-${Date.now()}` });
+    await createSchoolAdmin(otherSchool._id, {
+      email: 'other-admin@school.test',
+      password: 'Admin@1234',
+      name: 'Other Admin',
+    });
+    const { cookie: otherCookie } = await loginUser('other-admin@school.test', 'Admin@1234');
+    const foreign = await makeClass(otherCookie);
+    const foreignClassId = foreign.body.data.class._id;
+
+    const res = await createStudent(cookie, { ...STUDENT_BASE, classId: foreignClassId });
+    expect(res.statusCode).toBe(404);
+
+    // The failed create must not have left a User behind.
+    const list = await getStudents(cookie);
+    expect(list.body.data.students).toHaveLength(0);
+  });
+
+  it('422 — a malformed classId is rejected', async () => {
+    const res = await createStudent(cookie, { ...STUDENT_BASE, classId: 'not-an-id' });
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('200 — PUT can move a student to another class and unassign them', async () => {
+    const clsA = await makeClass(cookie);
+    const clsB = await makeClass(cookie, { name: 'Grade 6', grade: '6', section: 'B' });
+    const created = await createStudent(cookie, {
+      ...STUDENT_BASE,
+      classId: clsA.body.data.class._id,
+    });
+    const studentId = created.body.data.student._id;
+
+    const moved = await request(app)
+      .put(`/api/v1/admin/students/${studentId}`)
+      .set('Cookie', cookie)
+      .send({ classId: clsB.body.data.class._id });
+    expect(moved.statusCode).toBe(200);
+    expect(String(moved.body.data.student.classId._id)).toBe(clsB.body.data.class._id);
+
+    const cleared = await request(app)
+      .put(`/api/v1/admin/students/${studentId}`)
+      .set('Cookie', cookie)
+      .send({ classId: '' });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.body.data.student.classId).toBeNull();
+  });
+});
+
+describe('POST /api/v1/admin/students — server-allocated enrollment ID', () => {
+  let cookie;
+  const YY = String(new Date().getFullYear()).slice(-2);
+
+  // The admin form never sends an enrollmentId — the server allocates it.
+  const createWithoutId = (ck, overrides = {}) => {
+    const { enrollmentId, ...rest } = STUDENT_BASE;
+    return createStudent(ck, { ...rest, ...overrides });
+  };
+
+  beforeEach(async () => {
+    cookie = await getAdminCookie();
+  });
+
+  it('201 — first student of the year is allocated YY-000001', async () => {
+    const res = await createWithoutId(cookie);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.student.enrollmentId).toBe(`${YY}-000001`);
+  });
+
+  it('201 — the next student increments', async () => {
+    await createWithoutId(cookie);
+    const res = await createWithoutId(cookie, {
+      name: 'Bob Jones',
+      email: 'bob@school.test',
+    });
+    expect(res.body.data.student.enrollmentId).toBe(`${YY}-000002`);
+  });
+
+  it('201 — a deleted student\'s number is retired, never re-issued', async () => {
+    const first = await createWithoutId(cookie);
+    expect(first.body.data.student.enrollmentId).toBe(`${YY}-000001`);
+    await deleteStudentById(cookie, first.body.data.student._id);
+
+    // The head-count is back to zero, but 000001 still belongs to the
+    // soft-deleted row and would collide on the unique index.
+    const second = await createWithoutId(cookie, {
+      name: 'Bob Jones',
+      email: 'bob@school.test',
+    });
+    expect(second.body.data.student.enrollmentId).toBe(`${YY}-000002`);
+  });
+
+  it('201 — legacy IDs in another format do not disturb the sequence', async () => {
+    await createStudent(cookie, { ...STUDENT_BASE, enrollmentId: '26G5121' });
+    const res = await createWithoutId(cookie, {
+      name: 'Bob Jones',
+      email: 'bob@school.test',
+    });
+    expect(res.body.data.student.enrollmentId).toBe(`${YY}-000001`);
+  });
+
+  it('201 — an explicitly supplied ID is still honoured (import path)', async () => {
+    const res = await createStudent(cookie, { ...STUDENT_BASE, enrollmentId: 'LEGACY-42' });
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.student.enrollmentId).toBe('LEGACY-42');
+  });
+
+  it('409 — a supplied ID that is already taken still conflicts', async () => {
+    await createStudent(cookie, STUDENT_BASE);
+    const res = await createStudent(cookie, {
+      ...STUDENT_BASE,
+      email: 'bob@school.test',
+    });
+    expect(res.statusCode).toBe(409);
   });
 });
 

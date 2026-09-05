@@ -21,10 +21,11 @@ const createStudentValidator = [
     .withMessage('Valid email is required')
     .normalizeEmail(),
 
+  // Optional: the server allocates the next one when the client omits it.
+  // Still accepted so an import can preserve a school's existing numbers.
   body('enrollmentId')
+    .optional({ values: 'falsy' })
     .trim()
-    .notEmpty()
-    .withMessage('Enrollment ID is required')
     .matches(ENROLLMENT_REGEX)
     .withMessage('Enrollment ID must contain only uppercase letters, digits, and hyphens'),
 
@@ -46,6 +47,13 @@ const createStudentValidator = [
     .trim()
     .isLength({ max: 15 })
     .withMessage('Phone cannot exceed 15 characters'),
+
+  // Optional: a student may be created before any class exists. When supplied
+  // it is checked against this school's classes in the service layer.
+  body('classId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('classId must be a valid class id'),
 ];
 
 /**
@@ -82,6 +90,13 @@ const updateStudentValidator = [
     .trim()
     .matches(ENROLLMENT_REGEX)
     .withMessage('Enrollment ID must contain only uppercase letters, digits, and hyphens'),
+
+  // Optional: a student may be created before any class exists. When supplied
+  // it is checked against this school's classes in the service layer.
+  body('classId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('classId must be a valid class id'),
 ];
 
 module.exports = { createStudentValidator, updateStudentValidator };

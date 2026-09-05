@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User.model');
 const Student = require('../models/Student.model');
 // Class model must be registered before any Student.populate('classId') call
-require('../models/Class.model');
+const Class = require('../models/Class.model');
 const Timetable = require('../models/Timetable.model');
 const Attendance = require('../models/Attendance.model');
 const assessmentService = require('./assessment.service');
@@ -16,6 +16,13 @@ const studentCountService = require('./subscription/studentCount.service');
 
 const MONGO_DUPLICATE_KEY = 11000;
 
+// Enrollment IDs are "YY-NNNNNN" — e.g. 26-000001 for the first student of 2026.
+const ENROLLMENT_SEQ_WIDTH = 6;
+// A generated ID can lose a race with a concurrent create. The unique index is
+// the arbiter, so we recompute and retry rather than locking anything up front.
+const MAX_ENROLLMENT_ATTEMPTS = 5;
+
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Populate userId and classId on a Student query. */
@@ -23,6 +30,27 @@ const populateStudent = (query) =>
   query
     .populate('userId', 'name email phone role isActive')
     .populate('classId', 'name section');
+
+/**
+ * Resolve an incoming classId to a value safe to persist.
+ *
+ * Returns null for an empty value (explicitly unassigned) and throws if the
+ * class does not exist in THIS school — without the schoolId check an admin
+ * could park a student in another tenant's class.
+ */
+const resolveClassId = async (classId, schoolId) => {
+  if (classId === undefined || classId === null || classId === '') return null;
+
+  const exists = await Class.exists({ _id: classId, schoolId });
+  if (!exists) {
+    throw new ApiError(404, 'Class not found');
+  }
+  return classId;
+};
+
+/** Build an enrollment ID from a 2-digit year prefix and a sequence number. */
+const buildEnrollmentId = (yearPrefix, seq) =>
+  `${yearPrefix}-${String(seq).padStart(ENROLLMENT_SEQ_WIDTH, '0')}`;
 
 // ── Service functions ────────────────────────────────────────────────────────
 
@@ -33,26 +61,10 @@ const populateStudent = (query) =>
  * @param {string} schoolId  Injected from req.school._id — never from req.body
  * @returns {Promise<{ user, student }>}
  */
-const createStudent = async (data, schoolId) => {
-  const { name, email, phone, enrollmentId, dateOfBirth, address, password } = data;
-  const normalizedId = (enrollmentId || '').toUpperCase();
-
-  // Pre-flight duplicate checks (cheaper than letting the DB throw 11000)
-  const [dupEnrollment, dupEmail] = await Promise.all([
-    Student.findOne({ schoolId, enrollmentId: normalizedId }),
-    User.findOne({ email }),
-  ]);
-
-  if (dupEnrollment) {
-    throw new ApiError(409, `Enrollment ID '${normalizedId}' is already in use`);
-  }
-  if (dupEmail) {
-    throw emailConflictError(dupEmail, { schoolId, label: 'student' });
-  }
-
-  // Use admin-provided password if given; otherwise generate a secure temp password
-  const tempPassword = password || crypto.randomBytes(6).toString('hex'); // 12 hex chars
-
+/** Insert the User + Student pair in one transaction. Throws on conflict. */
+const insertStudentTx = async ({
+  name, email, tempPassword, phone, schoolId, enrollmentId, dateOfBirth, address, classId,
+}) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -63,45 +75,139 @@ const createStudent = async (data, schoolId) => {
       { session }
     );
     const [student] = await Student.create(
-      [{ schoolId, userId: user._id, enrollmentId: normalizedId, dateOfBirth, address: address || null }],
+      [{
+        schoolId,
+        userId: user._id,
+        enrollmentId,
+        dateOfBirth,
+        address: address || null,
+        classId,
+      }],
       { session }
     );
 
     await session.commitTransaction();
-
-    // Refresh the school's cached `activeStudentCount` AFTER commit.
-    // Auto-flips the subscription between `trial` ↔ `trial_limit_reached`
-    // if this create crossed the cap.
-    studentCountService.updateCachedCount(schoolId).catch((err) => {
-      logger.error(
-        `[student.service] failed to update activeStudentCount for ${schoolId}: ${err.message}`
-      );
-    });
-
-    // Fire-and-forget email — never block the response
-    setImmediate(() => {
-      const emailService = require('./email.service');
-      emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
-        logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
-      });
-    });
-
     return { user, student };
   } catch (err) {
     await session.abortTransaction();
-
-    if (err.code === MONGO_DUPLICATE_KEY) {
-      const keyPattern = err.keyPattern || {};
-      if ('enrollmentId' in keyPattern) {
-        throw new ApiError(409, `Enrollment ID '${normalizedId}' is already in use`);
-      }
-      // Lost a race on the unique email index — same conflict, same message.
-      throw emailConflictError(await User.findOne({ email }), { schoolId, label: 'student' });
-    }
     throw err;
   } finally {
     session.endSession();
   }
+};
+
+const createStudent = async (data, schoolId) => {
+  const { name, email, phone, enrollmentId, dateOfBirth, address, password, classId } = data;
+
+  // An enrollmentId is optional: the admin UI never sends one and lets the
+  // server allocate it. It is still accepted so a school migrating in can keep
+  // the numbers already printed on its students' ID cards and records.
+  const suppliedId = (enrollmentId || '').trim().toUpperCase();
+
+  // Reject a bad/foreign class before opening the transaction.
+  const resolvedClassId = await resolveClassId(classId, schoolId);
+
+  // Pre-flight duplicate checks (cheaper than letting the DB throw 11000)
+  const [dupEnrollment, dupEmail] = await Promise.all([
+    suppliedId ? Student.findOne({ schoolId, enrollmentId: suppliedId }) : null,
+    User.findOne({ email }),
+  ]);
+
+  if (dupEnrollment) {
+    throw new ApiError(409, `Enrollment ID '${suppliedId}' is already in use`);
+  }
+  if (dupEmail) {
+    throw emailConflictError(dupEmail, { schoolId, label: 'student' });
+  }
+
+  // Use admin-provided password if given; otherwise generate a secure temp password
+  const tempPassword = password || crypto.randomBytes(6).toString('hex'); // 12 hex chars
+
+  const attempts = suppliedId ? 1 : MAX_ENROLLMENT_ATTEMPTS;
+  let result;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const idForAttempt = suppliedId || (await getNextEnrollmentId(schoolId));
+
+    try {
+      result = await insertStudentTx({
+        name,
+        email,
+        tempPassword,
+        phone,
+        schoolId,
+        enrollmentId: idForAttempt,
+        dateOfBirth,
+        address,
+        classId: resolvedClassId,
+      });
+      break;
+    } catch (err) {
+      if (err.code !== MONGO_DUPLICATE_KEY) throw err;
+
+      const keyPattern = err.keyPattern || {};
+      if (!('enrollmentId' in keyPattern)) {
+        // Lost a race on the unique email index — same conflict, same message.
+        throw emailConflictError(await User.findOne({ email }), { schoolId, label: 'student' });
+      }
+      if (suppliedId) {
+        throw new ApiError(409, `Enrollment ID '${suppliedId}' is already in use`);
+      }
+      if (attempt === attempts) {
+        throw new ApiError(409, 'Could not allocate an enrollment ID. Please try again.');
+      }
+      // else: a concurrent create took our number — recompute and retry
+    }
+  }
+
+  // Refresh the school's cached `activeStudentCount` AFTER commit.
+  // Auto-flips the subscription between `trial` ↔ `trial_limit_reached`
+  // if this create crossed the cap.
+  studentCountService.updateCachedCount(schoolId).catch((err) => {
+    logger.error(
+      `[student.service] failed to update activeStudentCount for ${schoolId}: ${err.message}`
+    );
+  });
+
+  // Fire-and-forget email — never block the response
+  setImmediate(() => {
+    const emailService = require('./email.service');
+    emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
+      logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
+    });
+  });
+
+  return result;
+};
+
+/**
+ * Suggest the next unused enrollment ID for a school, e.g. "26-000001".
+ *
+ * The sequence is derived from the highest ID already issued this year — NOT
+ * from the student head-count. Soft-deleted students keep their enrollmentId
+ * and still occupy the { schoolId, enrollmentId } unique index, so a number
+ * belonging to a deleted student must never be handed out again.
+ *
+ * @param {string} schoolId
+ * @returns {Promise<string>}
+ */
+const getNextEnrollmentId = async (schoolId) => {
+  const yearPrefix = String(new Date().getFullYear()).slice(-2);
+
+  // No isDeleted filter — retired numbers still count as taken.
+  // Widths are fixed and zero-padded, so a lexicographic sort is a numeric one.
+  const latest = await Student.findOne(
+    {
+      schoolId,
+      enrollmentId: new RegExp(`^${yearPrefix}-\\d{${ENROLLMENT_SEQ_WIDTH}}$`),
+    },
+    'enrollmentId'
+  )
+    .sort({ enrollmentId: -1 })
+    .lean();
+
+  const lastSeq = latest ? Number(latest.enrollmentId.slice(-ENROLLMENT_SEQ_WIDTH)) : 0;
+  return buildEnrollmentId(yearPrefix, lastSeq + 1);
 };
 
 /**
@@ -184,7 +290,7 @@ const updateStudent = async (id, data, schoolId) => {
     throw new ApiError(404, 'Student not found');
   }
 
-  const { name, phone, enrollmentId, dateOfBirth, address } = data;
+  const { name, phone, enrollmentId, dateOfBirth, address, classId } = data;
 
   const userUpdate = {};
   if (name !== undefined) userUpdate.name = name;
@@ -199,6 +305,8 @@ const updateStudent = async (id, data, schoolId) => {
   }
   if (dateOfBirth !== undefined) studentUpdate.dateOfBirth = dateOfBirth;
   if (address !== undefined) studentUpdate.address = address;
+  // An empty classId is a deliberate un-assignment, not a no-op.
+  if (classId !== undefined) studentUpdate.classId = await resolveClassId(classId, schoolId);
 
   await Promise.all([
     Object.keys(userUpdate).length > 0
