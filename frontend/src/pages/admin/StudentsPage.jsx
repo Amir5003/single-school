@@ -6,6 +6,7 @@ import ConfirmModal from '../../components/common/ConfirmModal';
 import StatusMessage from '../../components/common/StatusMessage';
 import Avatar from '../../components/common/Avatar';
 import StudentForm from '../../components/admin/StudentForm';
+import DataResponsibilityGate from '../../components/admin/DataResponsibilityGate';
 import {
   getStudents,
   createStudent,
@@ -104,7 +105,6 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);          // matches the active filters
-  const [schoolTotal, setSchoolTotal] = useState(0); // unfiltered — drives nextSeq
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [classes, setClasses] = useState([]);
@@ -157,24 +157,12 @@ export default function StudentsPage() {
     []
   );
 
-  // Unfiltered head-count, kept separate so the suggested enrollment ID stays
-  // correct while a search or class filter is narrowing the list.
-  const fetchSchoolTotal = useCallback(async () => {
-    try {
-      const result = await getStudents({ page: 1, limit: 1 });
-      setSchoolTotal(result.data.total ?? 0);
-    } catch {
-      /* non-critical — the form falls back to the last known count */
-    }
-  }, []);
-
   useEffect(() => {
     fetchStudents(1, '', '');
-    fetchSchoolTotal();
     getClasses()
       .then((res) => setClasses(res.data?.classes ?? []))
       .catch(() => showStatus('Failed to load classes for the filter.', 'error'));
-  }, [fetchStudents, fetchSchoolTotal]);
+  }, [fetchStudents]);
 
   // Debounced search
   const searchTimer = useRef(null);
@@ -202,10 +190,7 @@ export default function StudentsPage() {
 
   const handlePageChange = (newPage) => fetchStudents(newPage, search, classFilter);
 
-  const refresh = () => {
-    fetchStudents(page, search, classFilter);
-    fetchSchoolTotal();
-  };
+  const refresh = () => fetchStudents(page, search, classFilter);
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
   const openCreateModal = () => {
@@ -431,18 +416,22 @@ export default function StudentsPage() {
             {apiErrors._form && <StatusMessage message={apiErrors._form} type="error" />}
 
             <div className={apiErrors._form ? 'mt-4' : ''}>
-              <StudentForm
-                initialData={editStudent}
-                onSubmit={handleFormSubmit}
-                loading={formLoading}
-                nextSeq={editStudent ? undefined : schoolTotal + 1}
-                apiErrors={
-                  // Don't pass _form key into individual field errors
-                  Object.fromEntries(
-                    Object.entries(apiErrors).filter(([k]) => k !== '_form')
-                  )
-                }
-              />
+              {/* The one-time acknowledgement gates only the CREATE form: an
+                  admin editing an existing record is not adding anyone new. */}
+              <DataResponsibilityGate skip={Boolean(editStudent)}>
+                <StudentForm
+                  initialData={editStudent}
+                  onSubmit={handleFormSubmit}
+                  loading={formLoading}
+                  classes={classes}
+                  apiErrors={
+                    // Don't pass _form key into individual field errors
+                    Object.fromEntries(
+                      Object.entries(apiErrors).filter(([k]) => k !== '_form')
+                    )
+                  }
+                />
+              </DataResponsibilityGate>
             </div>
           </div>
         </div>

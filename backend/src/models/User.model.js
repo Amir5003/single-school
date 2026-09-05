@@ -57,6 +57,21 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Set when the user completes the forced password change, having been
+    // shown the privacy notice panel. Written in the SAME save as
+    // `mustChangePassword: false` — splitting them would allow a user who
+    // changed their password but is recorded as never having seen the notice.
+    noticeAckedAt: {
+      type: Date,
+      default: null,
+    },
+    // One-time acknowledgement by a school-admin that their school has a
+    // lawful basis for the records it enters and has informed the people
+    // concerned. Once per administrator, never per record created.
+    adminDataAckAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

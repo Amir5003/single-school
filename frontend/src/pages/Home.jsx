@@ -397,7 +397,7 @@ export default function Home() {
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 py-8 bg-white">
+      <footer className="border-t border-gray-100 py-8 bg-white pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))]">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
@@ -410,7 +410,16 @@ export default function Home() {
           <p className="text-xs text-gray-400">
             © {new Date().getFullYear()} All rights reserved.
           </p>
-          <nav className="flex gap-5 text-xs text-gray-400">
+          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-gray-400">
+            <Link to="/privacy" className="hover:text-gray-700 transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-gray-700 transition-colors">
+              Terms
+            </Link>
+            <Link to="/refunds" className="hover:text-gray-700 transition-colors">
+              Refunds
+            </Link>
             {isAuthenticated ? (
               <>
                 <Link to={dashboardPath} className="hover:text-gray-700 transition-colors">

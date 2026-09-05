@@ -98,6 +98,9 @@ export default function UpgradeModal({
   const [billingCycle, setBillingCycle] = useState(summary?.billingCycle || 'monthly');
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [error, setError] = useState(null);
+  // Acknowledged at the moment money moves. Separate from the signup
+  // acceptance, which may be months old and made by a different person.
+  const [acceptedBilling, setAcceptedBilling] = useState(false);
   const backdropRef = useRef(null);
 
   // Annual discount % is the same across plans; read it from the API payload
@@ -668,7 +671,29 @@ export default function UpgradeModal({
 
           {/* Footer */}
           {(step === STEP.PLAN || step === STEP.REVIEW) && (
-            <div className="border-t border-gray-100 px-7 py-4 flex items-center justify-between gap-4 bg-gray-50">
+            <div className="border-t border-gray-100 px-7 py-4 bg-gray-50 space-y-3">
+            <label className="flex gap-2.5 items-start cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedBilling}
+                onChange={(e) => setAcceptedBilling(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-400"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                I understand this plan renews {billingCycle === 'annual' ? 'annually' : 'monthly'}{' '}
+                until cancelled, and I have read the{' '}
+                <a
+                  href="/refunds"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 underline"
+                >
+                  Refund &amp; Cancellation Policy
+                </a>
+                .
+              </span>
+            </label>
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -687,7 +712,7 @@ export default function UpgradeModal({
                 )}
                 <button
                   type="button"
-                  disabled={!selectedPlan || isSame}
+                  disabled={!selectedPlan || isSame || !acceptedBilling}
                   onClick={primaryAction}
                   className={[
                     'px-5 py-2 rounded-lg text-sm font-semibold transition shadow-sm',
@@ -701,6 +726,7 @@ export default function UpgradeModal({
                   {step === STEP.PLAN ? (isSame ? 'Already on this plan' : 'Review & continue') : ctaLabel}
                 </button>
               </div>
+            </div>
             </div>
           )}
         </motion.div>

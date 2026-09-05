@@ -95,7 +95,7 @@ function SubjectGroup({ group }) {
   return (
     <motion.div
       variants={fadeInUp}
-      className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-sm border border-white/20 overflow-hidden"
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
     >
       <button
         onClick={() => setOpen((v) => !v)}
@@ -140,7 +140,7 @@ export default function CourseworkList({ subjects, overallPercentage, totalCount
     >
       <motion.div
         variants={fadeInUp}
-        className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-sm border border-white/20 px-5 py-4 flex items-center justify-between gap-4"
+        className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4 flex items-center justify-between gap-4"
       >
         <div>
           <p className="text-sm font-semibold text-gray-700">Coursework average</p>

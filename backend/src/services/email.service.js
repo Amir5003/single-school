@@ -3,11 +3,26 @@ const logger = require('../utils/logger');
 
 const FROM = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@schoolms.app';
 
+const APP_URL = () => process.env.FRONTEND_URL || 'http://localhost:5173';
+
 /**
  * Send a temporary password to a newly created user.
  * Non-blocking — errors are caught and logged.
+ *
+ * This email is the End User's FIRST contact with the platform: their account
+ * was created by a school administrator, not by them. It therefore carries the
+ * privacy notice — who created the account, what is held, and where to read
+ * more. See specs/011-legal-terms-privacy (FR-007).
+ *
+ * @param {string} to
+ * @param {string} name
+ * @param {string} tempPassword
+ * @param {string} [schoolName]  Named in the notice; omitted falls back to
+ *                               generic wording rather than printing "undefined".
  */
-const sendTempPassword = async (to, name, tempPassword) => {
+const sendTempPassword = async (to, name, tempPassword, schoolName) => {
+  const privacyUrl = `${APP_URL()}/privacy`;
+  const creator = schoolName || 'Your school';
   const subject = 'Your School Management Account — Temporary Password';
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -24,10 +39,31 @@ const sendTempPassword = async (to, name, tempPassword) => {
         </tr>
       </table>
       <p>You will be prompted to change your password on first login.</p>
-      <p style="color: #888; font-size: 0.85em;">If you did not expect this email, please contact your school administrator.</p>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+      <p style="color: #4b5563; font-size: 0.9em; line-height: 1.6;">
+        <strong>About your data.</strong> ${creator} created this account for you and
+        decides what is recorded in it — your contact details, class, attendance,
+        marks and fee records. We store that information on the school's behalf and
+        use it for nothing else: there is no advertising and no tracking in this
+        product, and your data is never sold.
+        To see, correct or remove anything held about you, contact your school.
+        Full privacy notice: <a href="${privacyUrl}">${privacyUrl}</a>
+      </p>
+      <p style="color: #888; font-size: 0.85em;">If you were not expecting this email, please contact your school directly before signing in.</p>
     </div>
   `;
-  const text = `Welcome, ${name}! Your email: ${to}. Temporary password: ${tempPassword}. Please change it on first login.`;
+  const text = [
+    `Welcome, ${name}! Your email: ${to}. Temporary password: ${tempPassword}.`,
+    'Please change it on first login.',
+    '',
+    `About your data: ${creator} created this account for you and decides what is`,
+    'recorded in it. We store it on the school\'s behalf and use it for nothing else —',
+    'no advertising, no tracking, never sold. To see, correct or remove anything held',
+    'about you, contact your school.',
+    `Full privacy notice: ${privacyUrl}`,
+    '',
+    'If you were not expecting this email, contact your school directly before signing in.',
+  ].join('\n');
 
   try {
     await transporter.sendMail({ from: FROM, to, subject, html, text });

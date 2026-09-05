@@ -74,7 +74,7 @@ export default function TimetableCard({ periods }) {
               <motion.li
                 key={period._id}
                 variants={fadeInUp}
-                className="backdrop-blur-sm bg-white/70 rounded-xl border border-white/20 shadow-sm p-4 flex items-stretch gap-3 sm:gap-4"
+                className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-stretch gap-3 sm:gap-4"
               >
                 {/* Fixed-width time column keeps every row's subject and
                     teacher starting at the same x, whatever the subject name */}

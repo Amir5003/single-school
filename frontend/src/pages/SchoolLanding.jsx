@@ -238,17 +238,28 @@ export default function SchoolLanding() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 py-6 bg-white">
+      <footer className="border-t border-gray-100 py-6 bg-white pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))]">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-xs text-gray-400">{schoolName}</span>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} All rights reserved.</p>
-          <Link
-            to={`/schools/${slug}/login`}
-            className="text-xs font-medium hover:opacity-80 transition-opacity"
-            style={{ color: primary }}
-          >
-            Login →
-          </Link>
+          <nav className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-xs text-gray-400">
+            {/* A parent following a link from a credentials email is most
+                likely to land here, so the privacy notice must be reachable
+                from this page in particular. */}
+            <Link to="/privacy" className="hover:text-gray-700 transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-gray-700 transition-colors">
+              Terms
+            </Link>
+            <Link
+              to={`/schools/${slug}/login`}
+              className="font-medium hover:opacity-80 transition-opacity"
+              style={{ color: primary }}
+            >
+              Login →
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

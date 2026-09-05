@@ -74,4 +74,10 @@ const deleteStudent = async (req, res, next) => {
   }
 };
 
-module.exports = { createStudent, listStudents, getStudent, updateStudent, deleteStudent };
+module.exports = {
+  createStudent,
+  listStudents,
+  getStudent,
+  updateStudent,
+  deleteStudent,
+};

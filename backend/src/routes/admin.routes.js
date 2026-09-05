@@ -32,6 +32,7 @@ const {
   updateTimetableValidator,
 } = require('../validators/timetable.validator');
 
+const { acknowledge: acknowledgeLegal } = require('../controllers/admin/legal.controller');
 const {
   createStudent,
   listStudents,
@@ -96,6 +97,11 @@ router.use(authenticate, schoolScope, authorize('school-admin'));
 // POST gated by `student_onboarding` to enforce the trial student-limit.
 // PUT/DELETE gated by `admin_write` — modifying existing students is allowed
 // while in trial_limit_reached but blocked when expired/cancelled.
+// ── Legal ────────────────────────────────────────────────────────────────────
+// Deliberately NOT gated by checkSubscriptionAccess: an admin whose trial has
+// lapsed must still be able to record this acknowledgement.
+router.post('/legal/ack', acknowledgeLegal);
+
 router.get('/students', listStudents);
 router.post('/students', studentOnboarding, createStudentValidator, validate, createStudent);
 router.get('/students/:id', getStudent);

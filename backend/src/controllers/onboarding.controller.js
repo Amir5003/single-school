@@ -33,17 +33,44 @@ const checkSlug = async (req, res, next) => {
 };
 
 /**
+ * Best-effort source IP for the acceptance record.
+ *
+ * `trust proxy` is deliberately NOT enabled app-wide — it changes how
+ * express-rate-limit identifies clients, which is not a change to make as a
+ * side effect of this feature. The first X-Forwarded-For hop is read directly
+ * instead, falling back to the socket address. Evidential weight only: this
+ * value is never used for authorization.
+ */
+const clientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || null;
+};
+
+/**
  * POST /api/v1/onboarding/register
  * Registers a new school + admin user; auto-issues JWT cookies.
+ *
+ * `acceptedTerms` is required by the validator. Note that no version string is
+ * read from the body — the accepted version is stamped server-side in
+ * onboarding.service.js so a client cannot claim to have accepted a version
+ * that was never published.
  */
 const registerSchool = async (req, res, next) => {
   try {
-    const { name, slug, adminEmail, adminPassword } = req.body;
+    // `phone` is validated by onboarding.validator and accepted by the
+    // service, but was previously not forwarded — the admin's phone number was
+    // silently dropped on every registration.
+    const { name, slug, adminEmail, adminPassword, phone } = req.body;
     const { school, admin } = await onboardingService.registerSchool({
       name,
       slug,
       adminEmail,
       adminPassword,
+      phone,
+      acceptedIp: clientIp(req),
     });
 
     // Auto-login the new admin

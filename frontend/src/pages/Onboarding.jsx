@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkSlugAvailability, registerSchool } from '../api/onboarding.api';
@@ -27,6 +27,7 @@ export default function Onboarding() {
     adminPassword: '',
     confirmPassword: '',
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [slugStatus, setSlugStatus] = useState(null); // null | 'checking' | 'available' | 'taken'
   const [slugSuggestions, setSlugSuggestions] = useState([]);
   const [error, setError] = useState('');
@@ -71,6 +72,12 @@ export default function Onboarding() {
       setError('Passwords do not match');
       return;
     }
+    // The server rejects this too — the button being disabled is a courtesy,
+    // not the enforcement.
+    if (!acceptedTerms) {
+      setError('Please accept the Terms of Service and Privacy Notice to continue');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -79,6 +86,7 @@ export default function Onboarding() {
         slug: form.slug,
         adminEmail: form.adminEmail,
         adminPassword: form.adminPassword,
+        acceptedTerms: true,
       });
 
       const { school, user } = data.data;
@@ -329,6 +337,34 @@ export default function Onboarding() {
                   </div>
                 </motion.div>
 
+                {/* Not pre-ticked: a pre-ticked box is not acceptance in most
+                    jurisdictions. Links open in a new tab so a half-filled
+                    three-step form is not lost. */}
+                <motion.label
+                  variants={fadeInUp}
+                  className="flex gap-3 items-start mb-5 cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    I have read and agree to the{' '}
+                    <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                      Terms of Service
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                      Privacy Notice
+                    </Link>
+                    . I am authorised to accept them for this school, and I understand the school is
+                    responsible for the student, parent and staff data it enters — including telling
+                    those people, or their guardians, that their records are held here.
+                  </span>
+                </motion.label>
+
                 {error && (
                   <p className="text-sm text-red-500 mb-4">{error}</p>
                 )}
@@ -344,7 +380,7 @@ export default function Onboarding() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || !acceptedTerms}
                     className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {loading ? 'Creating…' : 'Create School'}

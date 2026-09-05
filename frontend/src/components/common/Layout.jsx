@@ -37,7 +37,7 @@ export default function Layout({ role, children }) {
   }, [dispatch]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
+    <div className="app-shell flex flex-col overflow-hidden bg-gray-50">
       <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
       <SubscriptionGate />
       <div className="flex flex-1 overflow-hidden">
@@ -47,8 +47,11 @@ export default function Layout({ role, children }) {
           onClose={() => setSidebarOpen(false)}
         />
         {/* min-w-0: without it this flex item cannot shrink below its content's
-            min-content width, so a wide row pushes the whole page sideways. */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
+            min-content width, so a wide row pushes the whole page sideways.
+            overscroll-contain: stops a flick that reaches the end of this
+            pane from chaining to the document and rubber-banding the shell,
+            which reads as the scroll snagging. */}
+        <main className="flex-1 min-w-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-safe md:px-6 md:pt-6">
           {children}
         </main>
       </div>

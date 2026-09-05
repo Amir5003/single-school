@@ -35,6 +35,15 @@ const validateRegister = [
     .trim()
     .isLength({ max: 30 })
     .withMessage('Phone number must not exceed 30 characters'),
+
+  // Strict: only a real boolean `true` counts. `.isBoolean()` would accept
+  // "true", 1 and "on", which is exactly the sort of accidental acceptance
+  // this gate exists to prevent.
+  body('acceptedTerms')
+    .custom((value) => value === true)
+    .withMessage(
+      'You must accept the Terms of Service and Privacy Notice to register a school'
+    ),
 ];
 
 const validateSlugCheck = [

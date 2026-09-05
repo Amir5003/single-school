@@ -10,6 +10,45 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Height of the app shell.
+
+     iOS Safari resolves 100vh to the *large* viewport — the height the page
+     would have if the browser chrome were hidden — but the chrome is visible
+     on load. A shell clipped at 100vh therefore hangs its bottom strip behind
+     the toolbar, and because the real scrolling happens in an inner
+     overflow-y-auto, that strip is unreachable: the list appears to jam
+     before its last rows until Safari auto-hides the toolbar and the viewport
+     finally grows to 100vh.
+
+     dvh tracks the chrome as it shows and hides, so the shell always matches
+     what is actually on screen. The vh line stays first as the fallback for
+     browsers without dvh (iOS < 15.4), where ignoring the second declaration
+     leaves the old behaviour rather than a collapsed height: auto shell. */
+  .app-shell {
+    height: 100vh;
+  }
+
+  /* Kept in a separate block deliberately: as two declarations in one rule the
+     minifier drops the vh line as dead, taking the fallback with it. */
+  @supports (height: 100dvh) {
+    .app-shell {
+      height: 100dvh;
+    }
+  }
+
+  /* Bottom padding for the app's scroll area, clearing the home indicator on
+     notched devices. Sides are set explicitly by the caller so this never
+     fights a shorthand `p-4` for precedence. */
+  .pb-safe {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 768px) {
+    .pb-safe {
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
 }
 
 :root {

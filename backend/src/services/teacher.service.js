@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User.model');
 const Teacher = require('../models/Teacher.model');
 const ClassTeacher = require('../models/ClassTeacher.model');
+const School = require('../models/School.model');
 const ApiError = require('../utils/ApiError');
 const emailConflictError = require('../utils/emailConflict');
 const logger = require('../utils/logger');
@@ -67,10 +68,19 @@ const createTeacher = async (data, schoolId) => {
 
     await session.commitTransaction();
 
-    // Fire-and-forget email — never block the response
-    setImmediate(() => {
+    // Fire-and-forget email — never block the response.
+    // School name looked up here (post-response) rather than threaded through
+    // the service signature; see the equivalent note in student.service.js.
+    setImmediate(async () => {
       const emailService = require('./email.service');
-      emailService.sendTempPassword(email, name, tempPassword).catch((err) => {
+      let schoolName;
+      try {
+        const school = await School.findById(schoolId).select('name').lean();
+        schoolName = school?.name;
+      } catch (err) {
+        logger.error(`[teacher.service] school name lookup failed for ${schoolId}: ${err.message}`);
+      }
+      emailService.sendTempPassword(email, name, tempPassword, schoolName).catch((err) => {
         logger.error(`Failed to send temp password email to ${email}: ${err.message}`);
       });
     });

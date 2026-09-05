@@ -4,6 +4,7 @@ const User = require('../models/User.model');
 const ApiError = require('../utils/ApiError');
 const emailConflictError = require('../utils/emailConflict');
 const subscriptionLifecycle = require('./subscription/lifecycle.service');
+const { TERMS_VERSION, PRIVACY_VERSION } = require('../constants/legalVersions');
 
 /**
  * Check if a slug is available and suggest alternatives if taken.
@@ -33,10 +34,15 @@ const checkSlugAvailability = async (slug) => {
  * Register a new school and its admin user atomically.
  * Uses a MongoDB session for transactional safety.
  *
- * @param {{ name: string, slug: string, adminEmail: string, adminPassword: string }} params
+ * The acceptance of the Terms is recorded on the School inside the SAME
+ * transaction. A school that exists without an acceptance record is the one
+ * state this whole feature exists to prevent, so the write must never be
+ * moved outside the transaction for convenience.
+ *
+ * @param {{ name, slug, adminEmail, adminPassword, phone, acceptedIp }} params
  * @returns {Promise<{ school: School, admin: User }>}
  */
-const registerSchool = async ({ name, slug, adminEmail, adminPassword, phone }) => {
+const registerSchool = async ({ name, slug, adminEmail, adminPassword, phone, acceptedIp }) => {
   // Check slug uniqueness before starting session
   const slugTaken = await School.exists({ slug });
   if (slugTaken) {
@@ -54,15 +60,36 @@ const registerSchool = async ({ name, slug, adminEmail, adminPassword, phone }) 
   let school, admin;
 
   try {
+    // The admin's _id is pre-generated so the School — created first — can
+    // record who accepted the Terms without a second write inside the
+    // transaction.
+    const adminId = new mongoose.Types.ObjectId();
+    const acceptedAt = new Date();
+
     await session.withTransaction(async () => {
       [school] = await School.create(
-        [{ name, slug, isActive: false, slugLockedAt: new Date() }],
+        [{
+          name,
+          slug,
+          isActive: false,
+          slugLockedAt: new Date(),
+          legal: {
+            // Stamped from the server constant. Anything the client sent under
+            // this name is ignored — see constants/legalVersions.js.
+            termsVersion: TERMS_VERSION,
+            privacyVersion: PRIVACY_VERSION,
+            termsAcceptedAt: acceptedAt,
+            termsAcceptedBy: adminId,
+            termsAcceptedIp: acceptedIp || null,
+          },
+        }],
         { session }
       );
 
       [admin] = await User.create(
         [
           {
+            _id: adminId,
             name: `${name} Admin`,
             email: adminEmail,
             password: adminPassword,

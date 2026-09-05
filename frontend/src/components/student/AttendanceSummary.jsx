@@ -29,7 +29,7 @@ export default function AttendanceSummary({ summary }) {
   return (
     <div className="space-y-6">
       {/* Donut + counters */}
-      <div className="backdrop-blur-sm bg-white/70 rounded-2xl shadow-lg border border-white/20 p-6 flex flex-col sm:flex-row items-center gap-8">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 flex flex-col sm:flex-row items-center gap-8">
         {/* SVG donut */}
         <div className="relative w-28 h-28 flex-shrink-0">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -83,7 +83,7 @@ export default function AttendanceSummary({ summary }) {
               className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm ${
                 rec.status === 'Absent'
                   ? 'bg-red-50 border-red-100'
-                  : 'bg-white/70 border-white/20 backdrop-blur-sm'
+                  : 'bg-white border-gray-100'
               }`}
             >
               <span className="text-gray-700">{formatDate(rec.date)}</span>

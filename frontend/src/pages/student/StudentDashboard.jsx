@@ -30,7 +30,7 @@ function SummaryCard({ label, value, sub, linkTo }) {
   const inner = (
     <motion.div
       variants={fadeInUp}
-      className={`backdrop-blur-sm bg-white/70 rounded-2xl shadow-lg border border-white/20 p-5 flex flex-col gap-1 hover:shadow-xl transition-shadow ${linkTo ? 'cursor-pointer' : ''}`}
+      className={`bg-white rounded-2xl shadow-lg border border-gray-100 p-5 flex flex-col gap-1 hover:shadow-xl transition-shadow ${linkTo ? 'cursor-pointer' : ''}`}
     >
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
       <p className="text-3xl font-extrabold" style={{ color: branding?.primaryColor ?? '#4f46e5' }}>{value}</p>

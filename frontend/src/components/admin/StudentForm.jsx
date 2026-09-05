@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 
 const PASSWORD_REGEX = /(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}/;
-const ENROLLMENT_REGEX = /^[A-Z0-9-]+$/;
 
 /** Safely convert an API dateOfBirth value to "YYYY-MM-DD" for <input type="date"> */
 function toDateInputValue(dob) {
@@ -18,13 +17,16 @@ function toDateInputValue(dob) {
  *   onSubmit     — (formData: object) => void
  *   loading      — boolean — disables submit button
  *   apiErrors    — { [field]: message } — 422 errors returned from the API
+ *   classes      — the school's classes, for the assignment dropdown. Required
+ *                  to pick one; when the school has none yet the field is
+ *                  replaced by a prompt and the student is created unassigned.
  */
 export default function StudentForm({
   initialData = null,
   onSubmit,
   loading = false,
   apiErrors = {},
-  nextSeq = 1,
+  classes = [],
 }) {
   const isEdit = !!initialData;
 
@@ -33,30 +35,19 @@ export default function StudentForm({
     email: initialData?.userId?.email ?? '',
     password: '',
     phone: initialData?.userId?.phone ?? '',
-    enrollmentId: initialData?.enrollmentId ?? (() => {
-      const yy = String(new Date().getFullYear()).slice(-2);
-      return `${yy}${String(nextSeq).padStart(3, '0')}`;
-    })(),
     dateOfBirth: toDateInputValue(initialData?.dateOfBirth),
     address: initialData?.address ?? '',
+    // classId arrives populated ({ _id, name, section }) on edit
+    classId: initialData?.classId?._id ?? '',
   });
 
   const [localErrors, setLocalErrors] = useState({});
-  const [gradeForId, setGradeForId] = useState('');
 
   // Merge local client-side errors with API-returned 422 errors
   const allErrors = { ...localErrors, ...apiErrors };
 
   const set = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
-
-  // Auto-generate enrollment ID in create mode when grade or nextSeq changes
-  useEffect(() => {
-    if (isEdit) return;
-    const yy = String(new Date().getFullYear()).slice(-2);
-    const gradeCode = gradeForId.trim() ? `G${gradeForId.trim()}` : '';
-    setForm((prev) => ({ ...prev, enrollmentId: `${yy}${gradeCode}${String(nextSeq).padStart(3, '0')}` }));
-  }, [gradeForId, nextSeq, isEdit]);
 
   const validate = () => {
     const errs = {};
@@ -69,15 +60,13 @@ export default function StudentForm({
         errs.password =
           'Must be 8+ chars with 1 uppercase, 1 digit, and 1 special character';
       }
-      if (!form.enrollmentId.trim()) errs.enrollmentId = 'Enrollment ID is required';
-    }
-    if (
-      form.enrollmentId.trim() &&
-      !ENROLLMENT_REGEX.test(form.enrollmentId.trim().toUpperCase())
-    ) {
-      errs.enrollmentId = 'Use uppercase letters, digits, and hyphens only (e.g. STU-001)';
     }
     if (!form.dateOfBirth) errs.dateOfBirth = 'Date of birth is required';
+    // Unassigned students get no timetable, attendance, homework or fees — so
+    // a class is required whenever there is one to pick.
+    if (classes.length > 0 && !form.classId) {
+      errs.classId = 'Select a class — an unassigned student has no timetable, attendance or fees';
+    }
     setLocalErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -86,10 +75,14 @@ export default function StudentForm({
     e.preventDefault();
     if (!validate()) return;
 
-    const payload = {
-      ...form,
-      enrollmentId: form.enrollmentId.trim().toUpperCase(),
-    };
+    // enrollmentId is deliberately absent: the server allocates it on create,
+    // and it is printed on report cards afterwards, so it is never sent on edit.
+    const payload = { ...form };
+
+    // The dropdown is only rendered when classes loaded. Sending an empty
+    // classId because the list failed to load would silently unassign the
+    // student, so leave the field out entirely instead.
+    if (classes.length === 0) delete payload.classId;
 
     if (isEdit) {
       // email and password are not updatable
@@ -160,31 +153,46 @@ export default function StudentForm({
         />
       </Field>
 
-      {/* Grade — create only, drives auto-generated enrollment ID */}
-      {!isEdit && (
-        <Field label="Grade (for Enrollment ID)">
-          <input
-            type="text"
-            value={gradeForId}
-            onChange={(e) => setGradeForId(e.target.value)}
-            placeholder="e.g. 5  →  auto-fills ID below"
-            className={inputCls()}
-          />
-          <p className="text-xs text-gray-400 mt-1">Enter grade to auto-build ID. You can still edit the ID directly.</p>
+      {/* Class — assigns the student on save; the school may have none yet */}
+      <Field label="Class" error={allErrors.classId} required={classes.length > 0}>
+        {classes.length > 0 ? (
+          <>
+            <select
+              value={form.classId}
+              onChange={set('classId')}
+              className={inputCls(allErrors.classId)}
+            >
+              <option value="">Select a class…</option>
+              {classes.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                  {c.section ? ` – ${c.section}` : ''}
+                </option>
+              ))}
+            </select>
+            {isEdit && (
+              <p className="text-xs text-gray-400 mt-1">
+                Changing this moves the student to another class.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            No classes yet — create one on the Classes page first. This student can
+            be created now, but stays unassigned until you add them to a class.
+          </p>
+        )}
+      </Field>
+
+      {/* Enrollment ID — allocated by the server; read-only reference */}
+      {isEdit && (
+        <Field label="Enrollment ID">
+          <p className="text-sm font-mono text-gray-700">{initialData.enrollmentId || '—'}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Cannot be changed — it appears on issued report cards.
+          </p>
         </Field>
       )}
-
-      {/* Enrollment ID */}
-      <Field label="Enrollment ID" error={allErrors.enrollmentId} required={!isEdit}>
-        <input
-          type="text"
-          value={form.enrollmentId}
-          onChange={set('enrollmentId')}
-          placeholder="e.g. STU-001"
-          className={inputCls(allErrors.enrollmentId)}
-          style={{ textTransform: 'uppercase' }}
-        />
-      </Field>
 
       {/* Date of Birth */}
       <Field label="Date of Birth" error={allErrors.dateOfBirth} required>
@@ -208,6 +216,24 @@ export default function StudentForm({
           className={inputCls(allErrors.address) + ' resize-none'}
         />
       </Field>
+
+      {!isEdit && (
+        <p className="text-xs text-gray-400">
+          An Enrollment ID is assigned automatically when you save.
+        </p>
+      )}
+
+      {/* Standing notice — always visible, never a blocking dialog. A modal on
+          every save becomes muscle memory inside a week and stops meaning
+          anything; a line the admin reads while typing the email address does
+          not. */}
+      {!isEdit && (
+        <p className="text-xs text-gray-500 leading-relaxed rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
+          This creates an account in this person&apos;s name and emails a temporary password to the
+          address you enter. Confirm the address belongs to them or their guardian, and make sure
+          they have been told their records are held here.
+        </p>
+      )}
 
       <button
         type="submit"

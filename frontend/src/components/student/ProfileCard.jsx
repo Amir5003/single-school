@@ -9,7 +9,7 @@ export default function ProfileCard({ profile }) {
     <motion.div
       variants={fadeInUp}
       {...motionProps}
-      className="backdrop-blur-sm bg-white/70 rounded-2xl shadow-lg border border-white/20 p-6"
+      className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
     >
       {/* Avatar + Name */}
       <div className="flex flex-col items-center text-center gap-2 mb-6">
